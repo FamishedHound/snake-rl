@@ -1,4 +1,4 @@
-class table():
+class state():
 
     def __init__(self, table_pos):
         self.table_pos = table_pos

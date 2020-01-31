@@ -1,71 +1,64 @@
+from time import sleep
+
 import pygame
 
-from apple import apple
-from collision_handler import collision
-from snake_itself import Snake
-
-from pygame.locals import (
-    K_UP,
-    K_DOWN,
-    K_LEFT,
-    K_RIGHT,
-    K_ESCAPE,
-    KEYDOWN,
-    QUIT,
-)
-class Board():
-    def __init__(self,height,width):
-        self.clockobject = pygame.time.Clock()
-
-        pygame.init()
-        self.block_size=50
-        self.height=height
-        self.width=width
-        self.screen = pygame.display.set_mode([self.block_size*self.height,self.block_size* self.width])
-        self.snake = Snake(self.block_size,self.screen)
+from snake_segment import Segment
 
 
-        self.running=True
-        self.apple = apple(height,width,self.block_size,self.screen)
-        self.collision = collision(self.apple,self.snake)
-        self.apple.spawn_apple()
+class Snake():
 
-    def run(self):
-        while self.running:
-            self.clockobject.tick(15)
-            self.draw_board()
-            self.apple.draw_apple()
+    def __init__(self, block_size, screen):
+        self.block_size = block_size
+        self.screen = screen
 
-            self.snake.move()
-            collided = self.collision.check_collision_apple_snake()
-            self.snake.draw_snake()
+        self.current_direction = 0
+        self.snake_head_x = 1
+        self.snake_head_y = 8
+        self.snake_head = (1, 8)
+        self.segments = [Segment(12, 30, self.block_size, self.screen)]
+
+    def draw_snake(self):
+        x, y = self.snake_head
+        rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
+        pygame.draw.rect(self.screen, (0, 250, 154), rect)
+
+    def action(self, action):
+        actions = {0: "left",
+                   1: "right",
+                   2: "up",
+                   3: "down"}
+
+        if action == 0:
+            self.snake_head_x = self.snake_head[0] - 1
+
+        if action == 1:
+            self.snake_head_x = self.snake_head[0] + 1
+
+        if action == 2:
+            self.snake_head_y = self.snake_head[1] - 1
+
+        if action == 3:
+            self.snake_head_y = self.snake_head[1] + 1
+
+        self.snake_head = (self.snake_head_x, self.snake_head_y)
+
+    def add_segment(self, x, y):
+
+        self.segments.append(Segment(x, y, self.block_size, self.screen))
 
 
+'''
+    def draw_tail(self):
+        for segment in self.segments[1:]:
+            segment.draw_segment()
 
-            self.process_user_input()
-            self.losing_condition()
-            pygame.display.flip()
+    def move_tail(self):
 
-    def draw_board(self):
-        for y in range(self.height):
-            for x in range(self.width):
-                rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
-                pygame.draw.rect(self.screen, (119,136,153), rect)
-
-    def process_user_input(self):
-        events = pygame.event.get()
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.snake.action("left")
-                if event.key == pygame.K_RIGHT:
-                    self.snake.action("right")
-    def losing_condition(self):
-        if self.snake.snake_head_x<0 or self.snake.snake_head_x >self.height:
-            exit(1)
-        if self.snake.snake_head_y < 0 or self.snake.snake_head_y > self.width:
-            exit(1)
-
-
-snake = Board(9,9)
-snake.run()
+        for segment in range(len(self.segments) - 1, 0, -1):
+            print(segment)
+            print(len(self.segments))
+            self.segments[segment].x = self.segments[segment - 1].x
+            self.segments[segment].y = self.segments[segment - 1].y
+            print("head {} {} seg 1 {} {}".format(self.segments[segment].x, self.segments[segment].y,
+                                                  self.segments[segment - 1].x, self.segments[segment - 1].y))
+'''
