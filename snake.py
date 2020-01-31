@@ -18,7 +18,7 @@ class Board():
         self.clockobject = pygame.time.Clock()
 
         pygame.init()
-        self.block_size=10
+        self.block_size=50
         self.height=height
         self.width=width
         self.screen = pygame.display.set_mode([self.block_size*self.height,self.block_size* self.width])
@@ -67,5 +67,5 @@ class Board():
             exit(1)
 
 
-snake = Board(50,50)
+snake = Board(9,9)
 snake.run()

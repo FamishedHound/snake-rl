@@ -15,7 +15,7 @@ class Snake():
                           2: (-1, 0),  # left
                           3: (1, 0)}  # right
         self.current_direction = 0
-        self.snake_head = (12, 30)
+        self.snake_head = (0, 9)
         self.segments = [Segment(12, 30, self.block_size, self.screen)]
 
     def place_snake(self):
@@ -38,32 +38,42 @@ class Snake():
         self.segments[0].y = self.snake_head_y
         self.snake_head = (self.snake_head_x, self.snake_head_y)
 
-        self.move_tail()
-        self.draw_tail()
+        # self.move_tail()
+        # self.draw_tail()
+
     def draw_tail(self):
         for segment in self.segments[1:]:
-
             segment.draw_segment()
+
     def move_tail(self):
 
-        for segment in range(len(self.segments)-1, 0, -1):
+        for segment in range(len(self.segments) - 1, 0, -1):
             print(segment)
             print(len(self.segments))
             self.segments[segment].x = self.segments[segment - 1].x
             self.segments[segment].y = self.segments[segment - 1].y
-            print("head {} {} seg 1 {} {}".format(self.segments[segment].x,self.segments[segment].y ,self.segments[segment - 1].x,self.segments[segment - 1].y ))
-
+            print("head {} {} seg 1 {} {}".format(self.segments[segment].x, self.segments[segment].y,
+                                                  self.segments[segment - 1].x, self.segments[segment - 1].y))
 
     def action(self, action):
         left_right_correlation = {0: [2, 3], 1: [2, 3], 2: [0, 1], 3: [0, 1]}
 
         if action == 'left':
-            self.current_direction = left_right_correlation[self.current_direction][0]
+            self.snake_head_x = self.snake_head[0] + self.direction[self.current_direction][0]
+            self.snake_head_y = self.snake_head[1] + self.direction[self.current_direction][1]
 
         if action == 'right':
-            self.current_direction = left_right_correlation[self.current_direction][1]
+            self.snake_head_x = self.snake_head[0] + self.direction[self.current_direction][0]
+            self.snake_head_y = self.snake_head[1] + self.direction[self.current_direction][1]
 
-    def add_segment(self,x,y):
+        if action == "up":
+            self.snake_head_x = self.snake_head[0] + self.direction[self.current_direction][0]
+            self.snake_head_y = self.snake_head[1] + self.direction[self.current_direction][1]
 
+        if action == "down":
+            self.snake_head_x = self.snake_head[0] + self.direction[self.current_direction][0]
+            self.snake_head_y = self.snake_head[1] + self.direction[self.current_direction][1]
 
-        self.segments.append(Segment(x, y,self.block_size,self.screen))
+    def add_segment(self, x, y):
+
+        self.segments.append(Segment(x, y, self.block_size, self.screen))
