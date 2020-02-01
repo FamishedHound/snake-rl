@@ -6,5 +6,10 @@ class Q_table():
         self.apple_pos = apple_pos
         self.starting_pos = starting_pos
 
-
         self.utilities = [{0: 0}, {1: 0}, {2: 0}, {3: 0}]
+
+    def update_table(self,action,utility):
+        for actions in self.utilities:
+            for a in actions.items():
+                if action == a:
+

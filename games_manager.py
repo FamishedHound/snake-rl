@@ -14,13 +14,17 @@ class games_manager():
 
 
 
-    def start_a_new_game(self,apple_pos,starting_pos):
-        for dict in self.past_games:
-            for key, value in dict.items():
-                if key == (apple_pos, starting_pos):
-                    return value
+    def look_up_memory_of_games(self,apple_pos,starting_pos):
+        for game in self.past_games:
+            if game.apple_pos == apple_pos and game.starting_pos == starting_pos:
+                return game
 
-        games = [single_game((x, y), apple_pos, self.starting_pos) for x in self.height for y in self.width]
-        self.states_memory.append({(self.apple_pos, self.starting_pos): states})
-        return states
+        game = single_game( apple_pos, starting_pos, self.width, self.height, self.snake)
+        self.past_games.append(game)
+        return game
+
+    def start_new_game(self,apple_pos,starting_pos):
+        current_game = self.look_up_memory_of_games(apple_pos,starting_pos)
+        current_game.new_game()
+
 

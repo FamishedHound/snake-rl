@@ -11,8 +11,8 @@ class single_game():
 
         self.states_memory = []
         self.snake = snake
-        self.current_state = self.initate_states()
-        self.Q_table = Q_table(self.apple_pos, self.starting_pos)
+
+
 
     def initate_states(self):
 
@@ -24,3 +24,6 @@ class single_game():
         states = [state((x, y), self.apple_pos, self.starting_pos) for x in self.height for y in self.width]
         self.states_memory.append({(self.apple_pos, self.starting_pos): states})
         return states
+    def new_game(self):
+
+        self.current_state = self.initate_states()
