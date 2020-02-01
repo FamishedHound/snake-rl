@@ -8,8 +8,9 @@ class Q_table():
 
         self.utilities = [{0: 0}, {1: 0}, {2: 0}, {3: 0}]
 
-    def update_table(self,action,utility):
-        for actions in self.utilities:
-            for a in actions.items():
-                if action == a:
+    def update_table(self, action, new_utility):
+        self.utilities[action][action]=new_utility
 
+    def get_all_actions_utilities(self):
+
+        return [value for x in self.utilities for k,value in x.items()]

@@ -2,6 +2,7 @@ import pygame
 
 from apple import apple
 from collision_handler import collision
+from games_manager import games_manager
 from snake import Snake
 
 from pygame.locals import (
@@ -24,11 +25,13 @@ class Board():
         self.screen = pygame.display.set_mode([self.block_size*self.height,self.block_size* self.width])
         self.snake = Snake(self.block_size,self.screen)
 
-
+        self.game_manager = games_manager(self.height, self.width, self.snake)
         self.running=True
         self.apple = apple(height,width,self.block_size,self.screen)
         self.collision = collision(self.apple,self.snake)
         self.apple.spawn_apple()
+
+        #self.current_game = self.game_manager.start_new_game()
 
     def run(self):
         while self.running:
@@ -37,13 +40,13 @@ class Board():
             self.apple.draw_apple()
 
             #self.snake.move()
-            self.collision.check_collision_apple_snake()
+            self.collision.return_reward(self.height,self.width)
             self.snake.draw_snake()
 
 
 
-            self.process_user_input()
-            self.losing_condition()
+            #self.process_ai_input()
+
             pygame.display.flip()
 
     def draw_board(self):
@@ -52,23 +55,9 @@ class Board():
                 rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
                 pygame.draw.rect(self.screen, (119,136,153), rect)
 
-    def process_user_input(self):
-        events = pygame.event.get()
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.snake.action("left")
-                if event.key == pygame.K_RIGHT:
-                    self.snake.action("right")
-                if event.key == pygame.K_UP:
-                    self.snake.action("up")
-                if event.key == pygame.K_DOWN:
-                    self.snake.action("down")
-    def losing_condition(self):
-        if self.snake.snake_head_x<0 or self.snake.snake_head_x >self.height-1:
-            exit(1)
-        if self.snake.snake_head_y < 0 or self.snake.snake_head_y > self.width-1:
-            exit(1)
+    def process_ai_input(self,action):
+        self.snake.action(action)
+
 
 
 snake = Board(9,9)

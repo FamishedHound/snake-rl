@@ -45,7 +45,8 @@ class Snake():
     def add_segment(self, x, y):
 
         self.segments.append(Segment(x, y, self.block_size, self.screen))
-
+    def reset_snake(self):
+        self.screen = (1,8)
 
 '''
     def draw_tail(self):
