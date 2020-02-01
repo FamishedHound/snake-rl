@@ -1,4 +1,5 @@
-from Q_table import Q_tables
+from Q_table import Q_table
+from State import state
 
 
 class single_game():
@@ -7,10 +8,19 @@ class single_game():
         self.width = width
         self.apple_pos = apple_pos
         self.starting_pos = starting_pos
-        self.states = []
+
+        self.states_memory = []
         self.snake = snake
-        self.eplsion_greedy_param = 0.1
-        self.Q_table = Q_tables(self.apple_pos, self.starting_pos, self.height, self.width)
+        self.current_state = self.initate_states()
+        self.Q_table = Q_table(self.apple_pos, self.starting_pos)
 
-    def make_a_move(self):
+    def initate_states(self):
 
+        for dict in self.states_memory:
+            for key, value in dict.items():
+                if key == (self.apple_pos, self.starting_pos):
+                    return value
+
+        states = [state((x, y), self.apple_pos, self.starting_pos) for x in self.height for y in self.width]
+        self.states_memory.append({(self.apple_pos, self.starting_pos): states})
+        return states

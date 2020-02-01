@@ -8,17 +8,19 @@ class games_manager():
         self.height = height
         self.Q_tables =[]
         self.snake = snake
+        self.past_games =[]
+        self.eplsion_greedy_param = 0.1
 
 
 
 
-    def start_a_game(self,apple_pos,starting_pos):
-        for game in self.Q_tables:
+    def start_a_new_game(self,apple_pos,starting_pos):
+        for dict in self.past_games:
+            for key, value in dict.items():
+                if key == (apple_pos, starting_pos):
+                    return value
 
-            if game.apple_pos == apple_pos and starting_pos == starting_pos:
-                return game
-
-        game = single_game(apple_pos, starting_pos, self.height, self.width,self.snake)
-        self.Q_tables.append(game)
-        return game
+        games = [single_game((x, y), apple_pos, self.starting_pos) for x in self.height for y in self.width]
+        self.states_memory.append({(self.apple_pos, self.starting_pos): states})
+        return states
 
