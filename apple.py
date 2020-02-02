@@ -12,8 +12,8 @@ class apple():
 
 
     def spawn_apple(self):
-        self.x = random.randint(1,self.height-1)
-        self.y = random.randint(1,self.width-1)
+        self.x = 7
+        self.y = 4
 
         self.apple_position = (self.x,self.y)
 

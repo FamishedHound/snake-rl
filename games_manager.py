@@ -1,8 +1,10 @@
+from copy import deepcopy
+
 from current_run import single_game
 
 
 class games_manager():
-    def __init__(self, height, width, snake):
+    def __init__(self,apple_pos,starting_pos, height, width, snake):
 
         self.width = width
         self.height = height
@@ -11,16 +13,13 @@ class games_manager():
         self.past_games = []
         self.eplsion_greedy_param = 0.1
 
-    def look_up_memory_of_games(self, apple_pos, starting_pos):
-        for game in self.past_games:
-            if game.apple_pos == apple_pos and game.starting_pos == starting_pos:
-                return game
 
-        game = single_game(apple_pos, starting_pos, self.width, self.height, self.snake)
-        self.past_games.append(game)
-        return game
 
-    def start_new_game(self, apple_pos, starting_pos):
-        current_game = self.look_up_memory_of_games(apple_pos, starting_pos)
-        current_game.new_game()
+        self.game = single_game(apple_pos, starting_pos, self.width, self.height, self.snake)
+
+
+
+    def start_new_game(self, apple_pos, starting_pos,snake_pos):
+        current_game = self.game
+        current_game.new_game(self.height,self.width,apple_pos,starting_pos,snake_pos)
         return current_game

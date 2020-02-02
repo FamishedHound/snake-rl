@@ -1,3 +1,4 @@
+import numpy
 import pygame
 
 from apple import apple
@@ -25,27 +26,41 @@ class Board():
         self.screen = pygame.display.set_mode([self.block_size*self.height,self.block_size* self.width])
         self.snake = Snake(self.block_size,self.screen)
 
-        self.game_manager = games_manager(self.height, self.width, self.snake)
+
         self.running=True
         self.apple = apple(height,width,self.block_size,self.screen)
+
         self.collision = collision(self.apple,self.snake)
         self.apple.spawn_apple()
-
-        #self.current_game = self.game_manager.start_new_game()
-
+        self.tick=0
+        self.game_manager = games_manager((self.apple.x, self.apple.y),(1,8), self.height, self.width, self.snake)
+        self.current_game = self.game_manager.start_new_game(self.apple.x,self.apple.y,(1,8))
+        self.epsilon = 0.1
+        self.games_count=0
     def run(self):
         while self.running:
-            self.clockobject.tick(15)
+
+            self.clockobject.tick(900)
             self.draw_board()
             self.apple.draw_apple()
-
+            self.tick+=1
             #self.snake.move()
-            self.collision.return_reward(self.height,self.width)
+            reward = self.collision.return_reward(self.height,self.width)
             self.snake.draw_snake()
+            #print("reward {}".format(reward))
+            print(self.tick)
+            action = self.current_game.decide_action(self.epsilon,reward,self.snake.snake_head)
 
 
+            self.process_ai_input(action)
 
-            #self.process_ai_input()
+
+            if reward==-1 or reward==1:
+                self.games_count+=1
+
+                self.snake.reset_snake()
+
+                self.game_manager.start_new_game(self.apple.x, self.apple.y,(self.snake.snake_head))
 
             pygame.display.flip()
 
@@ -57,6 +72,9 @@ class Board():
 
     def process_ai_input(self,action):
         self.snake.action(action)
+        for event in pygame.event.get():
+
+            pygame.display.update()
 
 
 

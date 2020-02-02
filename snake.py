@@ -20,6 +20,7 @@ class Snake():
     def draw_snake(self):
         x, y = self.snake_head
         rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
+        #print(" {} screen".format(self.screen))
         pygame.draw.rect(self.screen, (0, 250, 154), rect)
 
     def action(self, action):
@@ -46,7 +47,9 @@ class Snake():
 
         self.segments.append(Segment(x, y, self.block_size, self.screen))
     def reset_snake(self):
-        self.screen = (1,8)
+        self.snake_head_x = 1
+        self.snake_head_y = 8
+        self.snake_head= (1,8)
 
 '''
     def draw_tail(self):

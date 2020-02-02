@@ -1,4 +1,4 @@
-
+from copy import deepcopy
 
 
 class state():
@@ -8,9 +8,12 @@ class state():
         self.apple_pos = apple_pos
         self.starting_pos = starting_pos
         self.memory = []
-        self.Q_table = self.select_a_table()
+        from Q_table import Q_table
+        self.Q_table = Q_table(self.apple_pos, self.starting_pos)
 
+    def get_Q_table(self):
 
+        return self.Q_table
     def select_a_table(self):
         if len(self.memory) > 0 :
             for q_table in self.memory:
