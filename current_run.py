@@ -83,11 +83,11 @@ class single_game():
             #print(previous_state.Q_table.utilities)
             a = current_state.Q_table.utilities[action][action]
             b = previous_state.Q_table.utilities[previous_action][previous_action]
-            c = max(previous_state.Q_table.get_all_actions_utilities())
+            c = max(current_state.Q_table.get_all_actions_utilities())
 
-            self.cumulative_utility =  b + self.alpha *(reward+  a *self.discount_factor  -b)
-            if self.cumulative_utility ==0.81:
-                print()
+            self.cumulative_utility =  self.alpha*b + (1-self.alpha)*(reward + self.discount_factor*c)
+
+
             previous_state.Q_table.update_table(previous_action, self.cumulative_utility)
         else:
 
