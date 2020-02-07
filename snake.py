@@ -7,14 +7,14 @@ from snake_segment import Segment
 
 class Snake():
 
-    def __init__(self, block_size, screen):
+    def __init__(self, block_size, screen,starting_pos):
         self.block_size = block_size
         self.screen = screen
-
+        self.starting_pos = starting_pos
         self.current_direction = 0
-        self.snake_head_x = 1
-        self.snake_head_y = 8
-        self.snake_head = (1, 8)
+        self.snake_head_x = starting_pos[0]
+        self.snake_head_y = starting_pos[1]
+        self.snake_head = starting_pos
         self.segments = [Segment(12, 30, self.block_size, self.screen)]
 
     def draw_snake(self):
@@ -47,9 +47,9 @@ class Snake():
 
         self.segments.append(Segment(x, y, self.block_size, self.screen))
     def reset_snake(self):
-        self.snake_head_x = 1
-        self.snake_head_y = 8
-        self.snake_head= (1,8)
+        self.snake_head_x = self.starting_pos[0]
+        self.snake_head_y = self.starting_pos[1]
+        self.snake_head = self.starting_pos
 
 '''
     def draw_tail(self):

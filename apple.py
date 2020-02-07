@@ -11,8 +11,11 @@ class apple():
         self.screen = screen
 
     def spawn_apple(self):
-        self.x = 7
-        self.y = 4
+        self.x = random.randint(1,4)
+        self.y = random.randint(1,4)
+        while (self.x,self.y)==(1,5):
+            self.x = random.randint(1, 4)
+            self.y = random.randint(1, 4)
 
         self.apple_position = (self.x, self.y)
 
