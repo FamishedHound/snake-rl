@@ -4,18 +4,16 @@ import pygame
 
 
 class apple():
-    def __init__(self, height, width, block_size, screen):
+    def __init__(self, height, width, block_size, screen,range_of_apple_spawn):
         self.height = height
         self.width = width
         self.block_size = block_size
         self.screen = screen
-
+        self.apple_spawn_range = range_of_apple_spawn
     def spawn_apple(self):
-        self.x = random.randint(1,4)
-        self.y = random.randint(1,4)
-        while (self.x,self.y)==(1,5):
-            self.x = random.randint(1, 4)
-            self.y = random.randint(1, 4)
+        self.x = random.randint(self.apple_spawn_range[0],self.apple_spawn_range[1])
+        self.y = random.randint(self.apple_spawn_range[0],self.apple_spawn_range[1])
+
 
         self.apple_position = (self.x, self.y)
 

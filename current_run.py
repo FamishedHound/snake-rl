@@ -1,3 +1,4 @@
+import pickle
 import random
 from copy import deepcopy
 
@@ -6,12 +7,17 @@ from State import state
 
 
 class single_game():
-    def __init__(self, apple_pos, starting_pos, width, height, snake):
+    def __init__(self, apple_pos, starting_pos, width, height, snake,load_from_file):
+        self.states_memory = []
+
+        if load_from_file[0]:
+            print("loaded Q tables from a file {}".format(load_from_file[1]))
+            self.states_memory = pickle.load(open(f"saved_models/{load_from_file[1]}.p", "rb"))
         self.height = height
         self.width = width
         self.apple_pos = apple_pos
         self.starting_pos = starting_pos
-        self.states_memory = []
+
         self.snake = snake
 
         self.path_in_current_game = []
@@ -28,11 +34,11 @@ class single_game():
             for settings in self.states_memory:
                 for apple_positions,states in settings.items():
                     if apple_positions == apple_pos:
-                        #print("current table {}".format(apple_pos))
+
                         return states
         a = [ state((x, y),apple_pos)  for x in range(self.height) for y in
              range(self.width)]
-        #print("current table {}".format(apple_pos))
+
         self.states_memory.append({apple_pos:a})
 
         return a
@@ -46,7 +52,7 @@ class single_game():
         self.state_list_current = self.initate_states(apple_pos)
 
     def get_current_state(self, snake_pos):
-        # print("{} inside".format(self.snake_pos))
+
         for state in self.state_list_current:
             if snake_pos[0] == state.table_pos[0] and snake_pos[1] == state.table_pos[1]:
                 return state
@@ -56,8 +62,7 @@ class single_game():
         if reward != -1:
             current_state = self.get_current_state(snake_pos)
             Q_table_cur = self.get_current_state(snake_pos).get_Q_table()
-            #print("QTable for state {} with pos {} ".format(Q_table_cur, snake_pos))
-            #print("Snake_pos {} ".format(snake_pos))
+
 
             utilities = Q_table_cur.get_all_actions_utilities()
 
@@ -155,3 +160,6 @@ class single_game():
                 if k not in to_ignore:
                     indices.append(k)
         return indices
+
+    def save_model(self,filename):
+        pickle.dump(self.states_memory, open(f"saved_models/{filename}.p", "wb"))
