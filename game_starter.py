@@ -18,11 +18,11 @@ from pygame.locals import (
     QUIT,
 )
 
-snake_starting_pos = (1, 4)
+snake_starting_pos = (1, 8)
 # ( bool (do we want to load) ,  filename )
-load_tables_from_file = (False, "6x6model")
+load_tables_from_file = (True, "9x9model")
 
-range_of_apple_spawn = (1,3)
+range_of_apple_spawn = (1,7)
 
 class Board():
     def __init__(self, height, width):
@@ -57,7 +57,7 @@ class Board():
 
     def run(self):
         while self.running:
-            self.clockobject.tick(9000)
+            self.clockobject.tick(5)
             self.draw_board()
 
             self.tick += 1
@@ -109,5 +109,5 @@ class Board():
             pygame.display.update()
 
 
-snake = Board(5,5)
+snake = Board(9,9)
 snake.run()
