@@ -3,6 +3,7 @@ import pickle
 import numpy
 import pygame
 
+from Function_approx.approximator import f_approximation
 from apple import apple
 from collision_handler import collision
 from games_manager import games_manager
@@ -18,11 +19,11 @@ from pygame.locals import (
     QUIT,
 )
 
-snake_starting_pos = (1, 8)
+snake_starting_pos = (1, 5)
 # ( bool (do we want to load) ,  filename )
-load_tables_from_file = (True, "9x9model")
+load_tables_from_file = (False, "9x9model")
 
-range_of_apple_spawn = (1,7)
+range_of_apple_spawn = (1,4)
 
 class Board():
     def __init__(self, height, width):
@@ -48,6 +49,7 @@ class Board():
         self.decide_epsilon_greedy()
         self.games_count = 0
         self.longest_streak = 0
+        self.f_approx = f_approximation(self.epsilon)
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -57,7 +59,7 @@ class Board():
 
     def run(self):
         while self.running:
-            self.clockobject.tick(5)
+            self.clockobject.tick(9000)
             self.draw_board()
 
             self.tick += 1
@@ -67,7 +69,7 @@ class Board():
             self.apple.draw_apple()
             self.snake.draw_snake()
 
-            action = self.current_game.decide_action(self.epsilon, reward, self.snake.snake_head)
+            action = self.f_approx.make_decision(self.apple.apple_position,self.snake.snake_head,reward)
 
             self.process_ai_input(action)
             self.lose_win_scenario(reward)
@@ -91,7 +93,7 @@ class Board():
                 self.snake.reset_snake()
 
             self.apple.spawn_apple()
-            self.game_manager.switch_state_table(self.apple.apple_position, self.snake.snake_head, snake_starting_pos)
+            self.f_approx.restart()
 
     def draw_board(self):
         for y in range(self.height):
@@ -109,5 +111,5 @@ class Board():
             pygame.display.update()
 
 
-snake = Board(9,9)
+snake = Board(6,6)
 snake.run()
