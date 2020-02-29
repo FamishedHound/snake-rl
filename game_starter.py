@@ -9,7 +9,9 @@ from apple import apple
 from collision_handler import collision
 from games_manager import games_manager
 from snake import Snake
-
+import skimage as skimage
+from skimage import transform, color, exposure
+from skimage.transform import rotate
 from pygame.locals import (
     K_UP,
     K_DOWN,
@@ -53,8 +55,7 @@ class Board():
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.95, batch_size=32,
-                                   epsilon=0.6)
-
+                                  epsilon=0.6)
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -106,6 +107,8 @@ class Board():
 
     def get_state(self):
         observation = pygame.surfarray.array3d(self.screen)
+        smaller_observation = pygame.transform.scale(self.screen, (80, 80))
+        return self.ProcessGameImage(observation)
 
 
     def process_ai_input(self, action):
@@ -116,6 +119,20 @@ class Board():
                 self.game_manager.save_model("9x9model")
                 pygame.quit()
             pygame.display.update()
+
+    def ProcessGameImage(self, RawImage):
+        GreyImage = skimage.color.rgb2gray(RawImage)
+        # Get rid of bottom Score line
+        # Now the Pygame seems to have turned the Image sideways so remove X direction
+        CroppedImage = GreyImage[0:400, 0:400]
+        # plt.imshow(CroppedImage)
+        # print("Cropped Image Shape: ",CroppedImage.shape)
+        ReducedImage = skimage.transform.resize(CroppedImage, (75, 75), mode='reflect')
+        ReducedImage = skimage.exposure.rescale_intensity(ReducedImage, out_range=(0, 255))
+        # Decide to Normalise
+
+
+        return ReducedImage
 
 
 snake = Board(6, 6)
