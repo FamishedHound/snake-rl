@@ -3,6 +3,7 @@ import pickle
 import numpy
 import pygame
 
+from DQN.DQN_agent import DQN_agent
 from Function_approx.approximator import f_approximation
 from apple import apple
 from collision_handler import collision
@@ -23,7 +24,8 @@ snake_starting_pos = (1, 5)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
 
-range_of_apple_spawn = (1,4)
+range_of_apple_spawn = (1, 4)
+
 
 class Board():
     def __init__(self, height, width):
@@ -37,7 +39,7 @@ class Board():
         self.snake = Snake(self.block_size, self.screen, snake_starting_pos)
 
         self.running = True
-        self.apple = apple(height, width, self.block_size, self.screen,range_of_apple_spawn)
+        self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn)
 
         self.collision = collision(self.apple, self.snake)
         self.apple.spawn_apple()
@@ -50,6 +52,9 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.95, batch_size=32,
+                                   epsilon=0.6)
+
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -69,11 +74,10 @@ class Board():
             self.apple.draw_apple()
             self.snake.draw_snake()
 
-            action = self.f_approx.make_decision(self.apple.apple_position,self.snake.snake_head,reward)
+            action = self.dqn_agent.make_action(self.get_state(),reward)
 
             self.process_ai_input(action)
             self.lose_win_scenario(reward)
-
 
             pygame.display.flip()
 
@@ -83,7 +87,6 @@ class Board():
                 self.longest_streak += 1
                 if self.longest_streak == 110:
                     self.epsilon = 0
-
 
             self.games_count += 1
             # print(reward)
@@ -101,6 +104,10 @@ class Board():
                 rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
                 pygame.draw.rect(self.screen, (119, 136, 153), rect)
 
+    def get_state(self):
+        observation = pygame.surfarray.array3d(self.screen)
+
+
     def process_ai_input(self, action):
         self.snake.action(action)
         for event in pygame.event.get():
@@ -111,5 +118,5 @@ class Board():
             pygame.display.update()
 
 
-snake = Board(6,6)
+snake = Board(6, 6)
 snake.run()

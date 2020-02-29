@@ -17,6 +17,7 @@ class Snake():
         self.snake_head = starting_pos
         self.segments = [Segment(12, 30, self.block_size, self.screen)]
 
+
     def draw_snake(self):
         x, y = self.snake_head
         rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)

@@ -72,7 +72,7 @@ class f_approximation():
 
             new_weights.append(weights_to_update[-1] + self.learning_rate * td_part)
             self.weights[decision] = new_weights
-        print(self.weights)
+        #print(self.weights)
 
 
     def restart(self):
