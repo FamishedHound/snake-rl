@@ -1,8 +1,8 @@
 import pickle
 
-import numpy
+import numpy as np
 import pygame
-
+import matplotlib.pyplot as plt
 from DQN.DQN_agent import DQN_agent
 from Function_approx.approximator import f_approximation
 from apple import apple
@@ -54,9 +54,10 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.95, batch_size=32,
-                                  epsilon=0.6)
+        self.dqn_agent = DQN_agent(action_number=4, frames=3, learning_rate=0.001, discount_factor=0.95, batch_size=32,
+                                   epsilon=1)
 
+        self.debug   = []
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
             self.epsilon = 0
@@ -75,7 +76,7 @@ class Board():
             self.apple.draw_apple()
             self.snake.draw_snake()
 
-            action = self.dqn_agent.make_action(self.get_state(),reward)
+            action = self.dqn_agent.make_action(self.get_state(), reward)
 
             self.process_ai_input(action)
             self.lose_win_scenario(reward)
@@ -106,10 +107,16 @@ class Board():
                 pygame.draw.rect(self.screen, (119, 136, 153), rect)
 
     def get_state(self):
-        observation = pygame.surfarray.array3d(self.screen)
-        smaller_observation = pygame.transform.scale(self.screen, (80, 80))
-        return self.ProcessGameImage(observation)
+        observation = pygame.surfarray.array3d(pygame.display.get_surface())
 
+        red = pygame.surfarray.pixels_red(pygame.display.get_surface())
+        green = pygame.surfarray.pixels_green(pygame.display.get_surface())
+        blue = pygame.surfarray.pixels_blue(pygame.display.get_surface())
+
+        inside = np.array([red, green, blue])
+
+
+        return self.ProcessGameImage(inside)
 
     def process_ai_input(self, action):
         self.snake.action(action)
@@ -127,12 +134,13 @@ class Board():
         CroppedImage = GreyImage[0:400, 0:400]
         # plt.imshow(CroppedImage)
         # print("Cropped Image Shape: ",CroppedImage.shape)
-        ReducedImage = skimage.transform.resize(CroppedImage, (75, 75), mode='reflect')
+        ReducedImage = skimage.transform.resize(RawImage, (1,3,84, 84), mode='reflect')
         ReducedImage = skimage.exposure.rescale_intensity(ReducedImage, out_range=(0, 255))
+        # plt.imshow(ReducedImage)
+        # plt.show()
         # Decide to Normalise
 
-
-        return ReducedImage
+        return ReducedImage / 255
 
 
 snake = Board(6, 6)

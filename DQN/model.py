@@ -15,23 +15,12 @@ class DQN(nn.Module):
         self.fc2 = nn.Linear(512, action_no)
 
     def forward(self, observation):
-        x = F.relu(self.conv1(observation))
+        x = F.relu(self.conv1(observation.float().cuda()))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
-        x = F.relu(self.fc1(x.view(-1, 7 * 7 * 64)))
+        x = F.relu(self.fc1(x.view(x.size(0), 7 * 7 * 64)))
         x = self.fc2(x)
 
         return x
 
 
-# rnd = torch.rand(1, 4, 84, 84)
-# print(rnd[0])
-# net = DQN(action_no=4, how_many_frames=4)
-# output = net(rnd)
-#
-# values, indices  =  output.max(dim=1)
-# print(output)
-# print(values)
-# print(indices.item())
-# print(output.max(dim=1).values[0].item())
-# print()

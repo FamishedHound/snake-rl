@@ -1,6 +1,6 @@
 import random
 from collections import deque
-
+import numpy as np
 
 class replay_memory():
     def __init__(self, capacity):
@@ -15,6 +15,6 @@ class replay_memory():
     def sample(self,batch_size):
 
         sampling = random.sample(self.memory,batch_size)
-
+        debug  = np.array([sampling])
         return sampling
 
