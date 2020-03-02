@@ -11,6 +11,7 @@ from games_manager import games_manager
 from snake import Snake
 import skimage as skimage
 from skimage import transform, color, exposure
+import cv2
 from skimage.transform import rotate
 from pygame.locals import (
     K_UP,
@@ -22,11 +23,11 @@ from pygame.locals import (
     QUIT,
 )
 
-snake_starting_pos = (1, 5)
+snake_starting_pos = (1, 3)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
 
-range_of_apple_spawn = (1, 4)
+range_of_apple_spawn = (1, 2)
 
 
 class Board():
@@ -37,7 +38,8 @@ class Board():
         self.block_size = 50
         self.height = height
         self.width = width
-        self.screen = pygame.display.set_mode([self.block_size * self.height, self.block_size * self.width])
+        self.screen = pygame.display
+        self.screen.set_mode([self.block_size * self.height, self.block_size * self.width])
         self.snake = Snake(self.block_size, self.screen, snake_starting_pos)
 
         self.running = True
@@ -54,8 +56,10 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=3, learning_rate=0.001, discount_factor=0.95, batch_size=32,
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0025, discount_factor=0.99, batch_size=32,
                                    epsilon=1)
+        self.reward = 0
+        self.action = None
 
         self.debug   = []
     def decide_epsilon_greedy(self):
@@ -65,23 +69,31 @@ class Board():
             self.epsilon = 0.1
 
     def run(self):
+
         while self.running:
-            self.clockobject.tick(9000)
-            self.draw_board()
+            self.clockobject.tick(90000)
+
+            reward = self.collision.return_reward(self.height, self.width)
+            action = self.dqn_agent.make_action(self.get_state(), reward)
+            self.draw_sprites()
+            self.process_ai_input()
+
+
+            print(" made action {}".format(action))
+            self.snake.action(action)
 
             self.tick += 1
 
-            reward = self.collision.return_reward(self.height, self.width)
 
-            self.apple.draw_apple()
-            self.snake.draw_snake()
 
-            action = self.dqn_agent.make_action(self.get_state(), reward)
-
-            self.process_ai_input(action)
             self.lose_win_scenario(reward)
 
             pygame.display.flip()
+
+    def draw_sprites(self):
+        self.draw_board()
+        self.apple.draw_apple()
+        self.snake.draw_snake()
 
     def lose_win_scenario(self, reward):
         if reward == -1 or reward == 1:
@@ -93,6 +105,7 @@ class Board():
             self.games_count += 1
             # print(reward)
             if reward == -1:
+                self.reward=0
                 print("Streak to eat apples without dying {}".format(self.longest_streak))
                 self.longest_streak = 0
                 self.snake.reset_snake()
@@ -104,24 +117,23 @@ class Board():
         for y in range(self.height):
             for x in range(self.width):
                 rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
-                pygame.draw.rect(self.screen, (119, 136, 153), rect)
+                pygame.draw.rect(self.screen.get_surface(), (119, 136, 153), rect)
 
     def get_state(self):
-        observation = pygame.surfarray.array3d(pygame.display.get_surface())
 
-        red = pygame.surfarray.pixels_red(pygame.display.get_surface())
-        green = pygame.surfarray.pixels_green(pygame.display.get_surface())
-        blue = pygame.surfarray.pixels_blue(pygame.display.get_surface())
+
+        red = pygame.surfarray.pixels_red(self.screen.get_surface())
+        green = pygame.surfarray.pixels_green(self.screen.get_surface())
+        blue = pygame.surfarray.pixels_blue(self.screen.get_surface())
 
         inside = np.array([red, green, blue]).transpose((1,2,0))
-        #plt.imshow(inside)
-        #plt.show()
+
 
 
         return self.ProcessGameImage(inside)
 
-    def process_ai_input(self, action):
-        self.snake.action(action)
+    def process_ai_input(self):
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False  # Be interpreter friendly
@@ -133,19 +145,21 @@ class Board():
         GreyImage = skimage.color.rgb2gray(RawImage)
         # Get rid of bottom Score line
         # Now the Pygame seems to have turned the Image sideways so remove X direction
-        RawImage = RawImage[0:400, 0:400]
-        # plt.imshow(CroppedImage)
-        # print("Cropped Image Shape: ",CroppedImage.shape)
-
-        ReducedImage = skimage.transform.resize(RawImage, (84, 84,3), mode='reflect')
-        ReducedImage = skimage.exposure.rescale_intensity(ReducedImage, out_range=(0, 255))
-        print(ReducedImage.shape)
-        # plt.imshow(ReducedImage.astype(np.uint8))
+        #RawImage = GreyImage[0:400, 0:400]
+        # plt.imshow(GreyImage)
         # plt.show()
-        # Decide to Normalise
+        #print("Cropped Image Shape: ",CroppedImage.shape)
 
-        return ReducedImage / 255.
+        # ReducedImage = skimage.transform.resize(RawImage, (84, 84,3), mode='reflect')
+        # ReducedImage = skimage.exposure.rescale_intensity(ReducedImage, out_range=(0, 255))
+        img = cv2.resize(GreyImage, (84, 84))
 
 
-snake = Board(6, 6)
+        # plt.imshow(img.astype(np.uint8))
+        # plt.show()
+        # print(img.shape)
+        return img / 255.
+
+
+snake = Board(4, 4)
 snake.run()
