@@ -113,7 +113,9 @@ class Board():
         green = pygame.surfarray.pixels_green(pygame.display.get_surface())
         blue = pygame.surfarray.pixels_blue(pygame.display.get_surface())
 
-        inside = np.array([red, green, blue])
+        inside = np.array([red, green, blue]).transpose((1,2,0))
+        #plt.imshow(inside)
+        #plt.show()
 
 
         return self.ProcessGameImage(inside)
@@ -131,16 +133,18 @@ class Board():
         GreyImage = skimage.color.rgb2gray(RawImage)
         # Get rid of bottom Score line
         # Now the Pygame seems to have turned the Image sideways so remove X direction
-        CroppedImage = GreyImage[0:400, 0:400]
+        RawImage = RawImage[0:400, 0:400]
         # plt.imshow(CroppedImage)
         # print("Cropped Image Shape: ",CroppedImage.shape)
-        ReducedImage = skimage.transform.resize(RawImage, (1,3,84, 84), mode='reflect')
+
+        ReducedImage = skimage.transform.resize(RawImage, (84, 84,3), mode='reflect')
         ReducedImage = skimage.exposure.rescale_intensity(ReducedImage, out_range=(0, 255))
-        # plt.imshow(ReducedImage)
+        print(ReducedImage.shape)
+        # plt.imshow(ReducedImage.astype(np.uint8))
         # plt.show()
         # Decide to Normalise
 
-        return ReducedImage / 255
+        return ReducedImage / 255.
 
 
 snake = Board(6, 6)

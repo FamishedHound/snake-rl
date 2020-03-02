@@ -15,6 +15,6 @@ class replay_memory():
     def sample(self,batch_size):
 
         sampling = random.sample(self.memory,batch_size)
-        debug  = np.array([sampling])
+
         return sampling
 
