@@ -37,7 +37,6 @@ class DQN_agent():
 
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
-            self.Q_network.train()
             batch = self.memory.sample(self.batch_size)
             states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
                 (32, self.frames, 84, 84)), torch.empty((32)), torch.empty(
@@ -58,21 +57,21 @@ class DQN_agent():
             #
             # temp = self.Q_network(states)
             # loss_input = torch.mul(temp[0][actions.long()], 1)
+            self.Q_network.train()
+
+            self.optimizer_Q_network.zero_grad()
             response = self.Q_network(states)
-            loss_input = Variable(response, requires_grad=True).cuda()
-            loss_input = Variable(loss_input, requires_grad=True).cuda()
+            loss_input = response
             loss_target = loss_input.clone()
 
             new_values = rewards + torch.mul(self.target_network(future_states).max(dim=1).values[
                                               0] * (1- terminals) + terminals * terminals_reward, self.discount_factor)
-            new_values = Variable(new_values, requires_grad=True).cuda()
+            new_values = new_values.cuda()
 
             idx = torch.cat((torch.arange(32).float(), actions))
             idx = idx.reshape(2, 32).long().numpy()
-            loss_target[idx] = new_values.cuda()
+            loss_target[idx] = new_values
 
-            loss_target = Variable(loss_target, requires_grad=True).cuda()
-            self.Q_network.train()
             loss = mse_loss(input=loss_input, target=loss_target)
 
             if self.epsilon <= 0.1:
@@ -82,8 +81,8 @@ class DQN_agent():
                 print()
 
             self.sync_counter += 1
-            self.plot.append(loss.cpu())
-            self.optimizer_Q_network.zero_grad()
+            self.plot.append(loss.item())
+        
             loss.backward()
             self.optimizer_Q_network.step()
 
@@ -95,41 +94,41 @@ class DQN_agent():
 
     def update_target_network(self):
         # copy current_network to target network
-        self.target_network.load_state_dict(self.Q_network.state_dict())
+        self.target_network.load_state_dict(self.Q_network.state_dict().clone()) #nie wiem czy tak można ale warto spróbować
 
     def make_action(self, state, reward, terminal):
         self.Q_network.eval()
+        with torch.no_grad():
+            state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
 
-        state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
+            network_response = self.Q_network(state)
+            values, indices = network_response.max(dim=1)
 
-        network_response = self.Q_network(state)
-        values, indices = network_response.max(dim=1)
+            randy_random = random.uniform(0, 1)
 
-        randy_random = random.uniform(0, 1)
+            # if randy_random > self.epsilon:
+            #     action = indices.item()
+            #     if self.epsilon <= 0.1:
+            #         print(action)
+            # else:
+            #     action = random.choice([0, 1, 2, 3])
+            action = 2
+            self.debug(action)
 
-        # if randy_random > self.epsilon:
-        #     action = indices.item()
-        #     if self.epsilon <= 0.1:
-        #         print(action)
-        # else:
-        #     action = random.choice([0, 1, 2, 3])
-        action = 2
-        self.debug(action)
+            self.update_memory(reward, terminal, state)
 
-        self.update_memory(reward, terminal, state)
+            self.flag = True
+            self.previous_action = action
+            self.previous_state = state.clone()
+            self.previous_reward = reward
 
-        self.flag = True
-        self.previous_action = action
-        self.previous_state = state.clone()
-        self.previous_reward = reward
-
-        self.sync_networks()
-        if terminal:
-            self.previous_action = None
-            self.previous_state = None
-            self.previous_reward = None
-            self.flag = False
-        return action
+            self.sync_networks()
+            if terminal:
+                self.previous_action = None
+                self.previous_state = None
+                self.previous_reward = None
+                self.flag = False
+            return action
 
     def debug(self, action):
         if self.epsilon > 0.1:
