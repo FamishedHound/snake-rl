@@ -1,7 +1,8 @@
 import random
 from collections import deque
 import numpy as np
-
+import torch
+#torch.set_printoptions(profile="full")
 class replay_memory():
     def __init__(self, capacity):
         self.memory = deque()
