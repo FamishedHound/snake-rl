@@ -22,7 +22,7 @@ class DQN_agent():
 
         self.discount_factor = discount_factor
         self.target_network.load_state_dict(self.Q_network.state_dict())
-        self.memory = replay_memory(10000)
+        self.memory = replay_memory(1000)
 
         self.frames = frames
         self.previous_action = None
@@ -76,11 +76,11 @@ class DQN_agent():
 
                 loss = mse_loss(input=loss_input, target=loss_target)
 
-                if self.epsilon <= 0.1:
-                    print(""  "")
-                    #plt.plot(self.plot)
-                    #plt.show()
-                    print()
+                # if self.epsilon <= 0.1:
+                #                 #     print(""  "")
+                #                 #     #plt.plot(self.plot)
+                #                 #     #plt.show()
+                #                 #     print()
 
 
                 self.plot.append(loss.item())
@@ -129,8 +129,8 @@ class DQN_agent():
             return action
 
     def debug(self, action):
-        if self.epsilon > 0.1:
-            self.epsilon -= 1e-6
+        if self.epsilon > 0.0: # WAS 0.1 CHANGE ME THIS IS TEST !!
+            self.epsilon -= 1e-4
             self.x += 1
         if self.x % 1111 == 0:
             print(self.epsilon)
@@ -145,5 +145,5 @@ class DQN_agent():
             self.update_Q_network()
 
     def sync_networks(self):
-        if self.sync_counter % 10 == 0:
+        if self.sync_counter % 20 == 0:
             self.update_target_network()

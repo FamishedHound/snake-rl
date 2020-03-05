@@ -23,11 +23,11 @@ from pygame.locals import (
     QUIT,
 )
 
-snake_starting_pos = (1, 5)
+snake_starting_pos = (1, 3)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
 
-range_of_apple_spawn = (2, 3)
+range_of_apple_spawn = (1, 2)
 
 
 class Board():
@@ -56,7 +56,7 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.95, batch_size=32,
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.70, batch_size=32,
                                    epsilon=1)
         self.reward = 0
         self.action = None
@@ -74,10 +74,11 @@ class Board():
         while self.running:
             self.games_count += 1
             pygame.display.flip()
+            reward = self.collision.return_reward(self.height, self.width)
             self.clockobject.tick(self.speed)
             self.draw_sprites()
             self.process_input()
-            reward = self.collision.return_reward(self.height, self.width)
+
             action = self.dqn_agent.make_action(self.get_state(), reward, True if reward != 0 else False)
 
             self.snake.action(action)
@@ -91,7 +92,7 @@ class Board():
 
     def lose_win_scenario(self, reward):
         if reward == -1 or reward == 1:
-            self.apple.spawn_apple()
+
             if reward == -1:
                 print("Apple score {}".format(self.longest_streak))
                 self.longest_streak=0
@@ -157,5 +158,5 @@ class Board():
         return img
 
 
-snake = Board(6, 6)
+snake = Board(4, 4)
 snake.run()
