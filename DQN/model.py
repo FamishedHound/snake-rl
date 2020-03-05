@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class DQN(nn.Module):
     def __init__(self, action_no, how_many_frames):
         super(DQN, self).__init__()
@@ -33,10 +34,14 @@ class DQN(nn.Module):
         #     print(observation[1])
         #     exit(1)
 
-        x = F.relu(self.conv1(observation.float().cuda()))
+        x = F.relu(self.conv1(observation))
+
         x = F.relu(self.conv2(x))
+
         x = F.relu(self.conv3(x))
+
         x = F.relu(self.fc1(x.view(x.size(0), 7 * 7 * 64)))
+
         x = self.fc2(x)
 
         return x

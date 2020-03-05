@@ -21,8 +21,8 @@ class collision():
         if self.snake.snake_head_y < 0 or self.snake.snake_head_y > width-1:
             return -1
 
-        if self.snake.snake_head[0] != 1:
-            return -1
+        # if self.snake.snake_head[0] != 1:
+        #     return -1
         return 0
 
     def calculateDistance(self,x1, y1, x2, y2):

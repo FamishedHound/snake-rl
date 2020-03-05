@@ -17,5 +17,5 @@ class replay_memory():
 
         sampling = random.sample(self.memory,batch_size)
 
-        return sampling
+        return sampling.copy()
 

@@ -23,11 +23,11 @@ from pygame.locals import (
     QUIT,
 )
 
-snake_starting_pos = (1, 2)
+snake_starting_pos = (1, 5)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
 
-range_of_apple_spawn = (1, 1)
+range_of_apple_spawn = (2, 3)
 
 
 class Board():
@@ -56,7 +56,7 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.00001, discount_factor=0.95, batch_size=32,
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.95, batch_size=32,
                                    epsilon=1)
         self.reward = 0
         self.action = None
@@ -91,6 +91,11 @@ class Board():
 
     def lose_win_scenario(self, reward):
         if reward == -1 or reward == 1:
+            self.apple.spawn_apple()
+            if reward == -1:
+                print("Apple score {}".format(self.longest_streak))
+                self.longest_streak=0
+                self.snake.reset_snake()
             if reward == 1:
                 self.longest_streak += 1
                 if self.longest_streak == 110:
@@ -98,9 +103,9 @@ class Board():
 
             # print(reward)
 
-            self.snake.reset_snake()
+
             # Change me if you want random apple
-            # self.apple.spawn_apple()
+
 
     def draw_board(self):
         for y in range(self.height):
@@ -152,5 +157,5 @@ class Board():
         return img
 
 
-snake = Board(3, 3)
+snake = Board(6, 6)
 snake.run()
