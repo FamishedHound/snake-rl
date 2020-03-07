@@ -8,7 +8,7 @@ class collision():
 
     def return_reward(self,height,width):
 
-        if self.apple.x == self.snake.snake_head[0] and self.apple.y == self.snake.snake_head[1]:
+        if self.apple.x == self.snake.snake_head_x and self.apple.y == self.snake.snake_head_y:
 
             self.snake.add_segment(self.apple.x,self.apple.y)
 
@@ -22,7 +22,10 @@ class collision():
 
         # if self.snake.snake_head[0] != 1:
         #     return -1
-        return 0
+        #print(f"{self.snake.snake_head_x} , {self.apple.x} , {self.snake.snake_head_y} ,{self.apple.y} ")
+        # print(self.calculateDistance(self.snake.snake_head[0],self.snake.snake_head[1],self.apple.x,self.apple.y))
+        #print(1/self.calculateDistance(self.snake.snake_head[0],self.snake.snake_head[1],self.apple.x,self.apple.y))
+        return -0.01
 
     def calculateDistance(self,x1, y1, x2, y2):
         dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)

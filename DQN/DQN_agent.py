@@ -14,15 +14,23 @@ from torch.autograd import Variable
 
 
 class DQN_agent():
-    def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon):
+    def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
+                 load_model,path):
+
+        self.save_model = save_model
+        self.load_model = load_model
+
 
         self.Q_network = DQN(action_number, frames).cuda()
+        if self.load_model:
+            self.Q_network.load_state_dict(torch.load(path))
+
         self.target_network = DQN(action_number, frames).cuda()
         self.optimizer_Q_network = torch.optim.Adam(self.Q_network.parameters(), lr=learning_rate)
 
         self.discount_factor = discount_factor
         self.target_network.load_state_dict(self.Q_network.state_dict())
-        self.memory = replay_memory(1000)
+        self.memory = replay_memory(100000)
 
         self.frames = frames
         self.previous_action = None
@@ -40,20 +48,24 @@ class DQN_agent():
             with torch.enable_grad():
                 batch = self.memory.sample(self.batch_size)
                 states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
-                    (32, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((32), requires_grad=True).cuda(), torch.empty(
-                    (32), requires_grad=True).cuda(), torch.empty((32, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((32),
-                                                                                                                       requires_grad=True).cuda(), torch.empty(
+                    (32, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((32),
+                                                                                       requires_grad=True).cuda(), torch.empty(
+                    (32), requires_grad=True).cuda(), torch.empty((32, self.frames, 84, 84),
+                                                                  requires_grad=True).cuda(), torch.empty((32),
+                                                                                                          requires_grad=True).cuda(), torch.empty(
                     (32), requires_grad=True).cuda()
                 for i in range(len(batch)):
-                    states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][0], \
-                                                                                                             batch[i][1], \
-                                                                                                             batch[i][2], \
-                                                                                                             batch[i][3], \
-                                                                                                             batch[i][4], \
+                    states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
+                                                                                                                 0], \
+                                                                                                             batch[i][
+                                                                                                                 1], \
+                                                                                                             batch[i][
+                                                                                                                 2], \
+                                                                                                             batch[i][
+                                                                                                                 3], \
+                                                                                                             batch[i][
+                                                                                                                 4], \
                                                                                                              batch[i][5]
-
-
-
 
                 future_states = future_states.cuda()
 
@@ -82,12 +94,9 @@ class DQN_agent():
                 #                 #     #plt.show()
                 #                 #     print()
 
-
                 self.plot.append(loss.item())
                 loss.backward()
                 self.optimizer_Q_network.step()
-
-
 
     def update_target_network(self):
         # copy current_network to target network
@@ -107,7 +116,8 @@ class DQN_agent():
             if randy_random > self.epsilon:
                 action = indices.item()
                 if self.epsilon <= 0.1:
-                    print(action)
+                    pass
+                    # print(action)
             else:
                 action = random.choice([0, 1, 2, 3])
 
@@ -129,10 +139,14 @@ class DQN_agent():
             return action
 
     def debug(self, action):
-        if self.epsilon > 0.0: # WAS 0.1 CHANGE ME THIS IS TEST !!
+        self.x += 1
+        if self.epsilon > 0.0:  # WAS 0.1 CHANGE ME THIS IS TEST !!
             self.epsilon -= 1e-4
-            self.x += 1
-        if self.x % 1111 == 0:
+
+        if self.x % 11111 == 0:
+            if self.save_model:
+                print("weights saved :) ")
+                torch.save(self.Q_network.state_dict(), "DQN_trained_model/4x4_model.pt")
             print(self.epsilon)
             print(action)
 
@@ -145,5 +159,5 @@ class DQN_agent():
             self.update_Q_network()
 
     def sync_networks(self):
-        if self.sync_counter % 20 == 0:
+        if self.sync_counter % 10 == 0:
             self.update_target_network()

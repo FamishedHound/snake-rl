@@ -56,8 +56,8 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.70, batch_size=32,
-                                   epsilon=1)
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
+                                   epsilon=1, save_model=True, load_model=False, path="")
         self.reward = 0
         self.action = None
         self.speed = 9000
@@ -79,7 +79,8 @@ class Board():
             self.draw_sprites()
             self.process_input()
 
-            action = self.dqn_agent.make_action(self.get_state(), reward, True if reward != 0 else False)
+            action = self.dqn_agent.make_action(self.get_state(), reward,
+                                                True if reward == 1 or reward == -1 else False)
 
             self.snake.action(action)
             self.tick += 1
@@ -95,7 +96,7 @@ class Board():
 
             if reward == -1:
                 print("Apple score {}".format(self.longest_streak))
-                self.longest_streak=0
+                self.longest_streak = 0
                 self.snake.reset_snake()
             if reward == 1:
                 self.longest_streak += 1
@@ -104,9 +105,7 @@ class Board():
 
             # print(reward)
 
-
             # Change me if you want random apple
-
 
     def draw_board(self):
         for y in range(self.height):
