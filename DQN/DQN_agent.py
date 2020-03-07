@@ -15,11 +15,11 @@ from torch.autograd import Variable
 
 class DQN_agent():
     def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model,path):
+                 load_model,path,epsilon_speed):
 
         self.save_model = save_model
         self.load_model = load_model
-
+        self.epsilon_speed = epsilon_speed
 
         self.Q_network = DQN(action_number, frames).cuda()
         if self.load_model:
@@ -141,7 +141,7 @@ class DQN_agent():
     def debug(self, action):
         self.x += 1
         if self.epsilon > 0.0:  # WAS 0.1 CHANGE ME THIS IS TEST !!
-            self.epsilon -= 1e-4
+            self.epsilon -= self.epsilon_speed
 
         if self.x % 11111 == 0:
             if self.save_model:
