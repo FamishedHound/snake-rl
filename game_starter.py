@@ -43,7 +43,7 @@ class Board():
         self.snake = Snake(self.block_size, self.screen, snake_starting_pos)
 
         self.running = True
-        self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn)
+        self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn,self.snake)
 
         self.collision = collision(self.apple, self.snake)
         self.apple.spawn_apple()
@@ -57,7 +57,7 @@ class Board():
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
-                                   epsilon=1, save_model=True, load_model=False, path="",epsilon_speed=1e-4)
+                                   epsilon=0.4, save_model=True, load_model=True, path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",epsilon_speed=1e-5)
         self.reward = 0
         self.action = None
         self.speed = 9000
@@ -73,16 +73,24 @@ class Board():
 
         while self.running:
             self.games_count += 1
+
             pygame.display.flip()
             reward = self.collision.return_reward(self.height, self.width)
             self.clockobject.tick(self.speed)
+
             self.draw_sprites()
+
             self.process_input()
+            self.snake.move_segmentation()
+            self.snake.draw_segment()
 
             action = self.dqn_agent.make_action(self.get_state(), reward,
-                                                True if reward == 1 or reward == -1 else False)
+                                                True if reward == 10 or reward == -1 else False)
+
 
             self.snake.action(action)
+
+
             self.tick += 1
             self.lose_win_scenario(reward)
 
@@ -92,13 +100,13 @@ class Board():
         self.snake.draw_snake()
 
     def lose_win_scenario(self, reward):
-        if reward == -1 or reward == 1:
+        if reward == -1 or reward == 10:
 
             if reward == -1:
                 print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
                 self.snake.reset_snake()
-            if reward == 1:
+            if reward == 10:
                 self.longest_streak += 1
                 if self.longest_streak == 110:
                     self.epsilon = 0
@@ -127,12 +135,29 @@ class Board():
 
     def process_input(self):
 
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False  # Be interpreter friendly
                 self.game_manager.save_model("9x9model")
                 pygame.quit()
+            if event.type == pygame.KEYDOWN:
+                #print("hgere")
+                action = None
+                if event.key == pygame.K_RIGHT:
+                    pass
+                if event.key == pygame.K_UP:
+                    self.speed=9000
+
+                if event.key == pygame.K_LEFT:
+                    #print("kkk")
+                    action = 0
+                if event.key == pygame.K_DOWN:
+                    self.speed=1
+                #print(action)
+
             pygame.display.update()
+
 
     def ProcessGameImage(self, RawImage):
         GreyImage = skimage.color.rgb2gray(RawImage)
@@ -151,9 +176,9 @@ class Board():
         # plt.show()
         # print(img.shape)
         img = ndimage.rotate(img, 270, reshape=False)
-        # plt.imshow(img)
-        # plt.savefig(f"./output/{self.games_count}.png")
-        # plt.close()
+        #plt.imshow(img)
+        #plt.savefig(f"./output/{self.games_count}.png")
+        #plt.close()
         return img
 
 

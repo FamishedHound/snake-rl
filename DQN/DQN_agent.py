@@ -15,7 +15,7 @@ from torch.autograd import Variable
 
 class DQN_agent():
     def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model,path,epsilon_speed):
+                 load_model, path, epsilon_speed):
 
         self.save_model = save_model
         self.load_model = load_model
@@ -30,7 +30,8 @@ class DQN_agent():
 
         self.discount_factor = discount_factor
         self.target_network.load_state_dict(self.Q_network.state_dict())
-        self.memory = replay_memory(100000)
+        self.memory = replay_memory(1000000)
+        self.epochs = 20
 
         self.frames = frames
         self.previous_action = None
@@ -45,15 +46,16 @@ class DQN_agent():
 
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
+
             with torch.enable_grad():
                 batch = self.memory.sample(self.batch_size)
                 states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
-                    (32, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((32),
+                    (self.batch_size, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((self.batch_size),
                                                                                        requires_grad=True).cuda(), torch.empty(
-                    (32), requires_grad=True).cuda(), torch.empty((32, self.frames, 84, 84),
-                                                                  requires_grad=True).cuda(), torch.empty((32),
+                    (self.batch_size), requires_grad=True).cuda(), torch.empty((self.batch_size, self.frames, 84, 84),
+                                                                  requires_grad=True).cuda(), torch.empty((self.batch_size),
                                                                                                           requires_grad=True).cuda(), torch.empty(
-                    (32), requires_grad=True).cuda()
+                    (self.batch_size), requires_grad=True).cuda()
                 for i in range(len(batch)):
                     states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
                                                                                                                  0], \
@@ -82,8 +84,8 @@ class DQN_agent():
                                                  self.discount_factor)
                 new_values = new_values.cuda()
 
-                idx = torch.cat((torch.arange(32).float().cuda(), actions)).cuda()
-                idx = idx.reshape(2, 32).cpu().long().numpy()
+                idx = torch.cat((torch.arange(self.batch_size).float().cuda(), actions)).cuda()
+                idx = idx.reshape(2, self.batch_size).cpu().long().numpy()
                 loss_target[idx] = new_values
 
                 loss = mse_loss(input=loss_input, target=loss_target)
@@ -114,12 +116,27 @@ class DQN_agent():
             randy_random = random.uniform(0, 1)
 
             if randy_random > self.epsilon:
-                action = indices.item()
-                if self.epsilon <= 0.1:
-                    pass
-                    # print(action)
+
+
+                if self.previous_action != None:
+                    forbidden_move = self.forbidden_action()
+                    network_response[0][forbidden_move] = -99
+                    possible_actions = network_response[0]
+                    values, indices = possible_actions.max(dim=0)
+                    #print(possible_actions)
+
+                    action = indices.item()
+                    #print("previous_action {} action {} forbidden_action {}".format(self.previous_action, action,forbidden_move))
+
+                else:
+                    action = indices.item()
+
             else:
-                action = random.choice([0, 1, 2, 3])
+                actions = [0, 1, 2, 3]
+                if self.previous_action !=None:
+                    forbidden_move = self.forbidden_action()
+                    actions.remove(forbidden_move)
+                action = random.choice(actions)
 
             self.debug(action)
 
@@ -132,21 +149,33 @@ class DQN_agent():
 
             self.sync_networks()
             if terminal:
-                self.previous_action = None
-                self.previous_state = None
-                self.previous_reward = None
+                if reward == -1:
+                    self.previous_action = None
+                    self.previous_state = None
+                    self.previous_reward = None
                 self.flag = False
             return action
 
+    def forbidden_action(self):
+        if self.previous_action == 0:
+            forbidden_move = 1
+        elif self.previous_action == 1:
+            forbidden_move = 0
+        elif self.previous_action == 2:
+            forbidden_move = 3
+        elif self.previous_action == 3:
+            forbidden_move = 2
+        return forbidden_move
+
     def debug(self, action):
         self.x += 1
-        if self.epsilon > 0.0:  # WAS 0.1 CHANGE ME THIS IS TEST !!
+        if self.epsilon > 0.1:  # WAS 0.1 CHANGE ME THIS IS TEST !!
             self.epsilon -= self.epsilon_speed
 
-        if self.x % 11111 == 0:
+        if self.x % 1111 == 0:
             if self.save_model:
                 print("weights saved :) ")
-                torch.save(self.Q_network.state_dict(), "DQN_trained_model/4x4_model.pt")
+                torch.save(self.Q_network.state_dict(), "DQN_trained_model/10x10_model_with_tail.pt")
             print(self.epsilon)
             print(action)
 
