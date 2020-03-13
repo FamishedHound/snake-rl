@@ -7,21 +7,29 @@ from snake_segment import Segment
 
 class Snake():
 
-    def __init__(self, block_size, screen):
+    def __init__(self, block_size, screen, starting_pos):
         self.block_size = block_size
         self.screen = screen
-
+        self.starting_pos = starting_pos
         self.current_direction = 0
-        self.snake_head_x = 1
-        self.snake_head_y = 8
-        self.snake_head = (1, 8)
-        self.segments = [Segment(12, 30, self.block_size, self.screen)]
+        self.snake_head_x = starting_pos[0]
+        self.snake_head_y = starting_pos[1]
+        self.snake_head = starting_pos
+        self.segments = []
+        self.dir = None
+        self.past_x=0
+        self.past_y=0
 
     def draw_snake(self):
         x, y = self.snake_head
         rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
-        #print(" {} screen".format(self.screen))
-        pygame.draw.rect(self.screen, (0, 250, 154), rect)
+        # print(" {} screen".format(self.screen))
+        pygame.draw.rect(self.screen.get_surface(), (0, 200, 0), rect)
+    def draw_segment(self):
+        for segment in self.segments:
+            rect = pygame.Rect(segment.x * self.block_size, segment.y * self.block_size, self.block_size,
+                               self.block_size)
+            pygame.draw.rect(self.screen.get_surface(), (0, 0, 200), rect)
 
     def action(self, action):
         actions = {0: "left",
@@ -31,25 +39,52 @@ class Snake():
 
         if action == 0:
             self.snake_head_x = self.snake_head[0] - 1
-
+            self.past_x = self.snake_head[0]
+            self.past_y = self.snake_head[1]
         if action == 1:
             self.snake_head_x = self.snake_head[0] + 1
-
+            self.past_x = self.snake_head[0]
+            self.past_y = self.snake_head[1]
         if action == 2:
             self.snake_head_y = self.snake_head[1] - 1
-
+            self.past_x = self.snake_head[0]
+            self.past_y = self.snake_head[1]
         if action == 3:
             self.snake_head_y = self.snake_head[1] + 1
+            self.past_x = self.snake_head[0]
+            self.past_y = self.snake_head[1]
+        self.dir = action
 
         self.snake_head = (self.snake_head_x, self.snake_head_y)
 
     def add_segment(self, x, y):
+        if len(self.segments) == 0:
+            self.segments.append(Segment(x, y, self.block_size, self.screen,self.dir))
+        else:
+            self.segments.append(Segment(self.segments[-1].x, self.segments[-1].y, self.block_size, self.screen,self.segments[-1].direction))
 
-        self.segments.append(Segment(x, y, self.block_size, self.screen))
+    def move_segmentation(self):
+        for i,segment in enumerate(self.segments):
+            #print(self.snake_head[0] , self.snake_head[1])
+            if i ==0:
+                segment.pastx = segment.x
+                segment.pasty = segment.y
+                segment.x = self.past_x
+                segment.y = self.past_y
+                segment.direction = self.dir
+            if i >0:
+                segment.pastx = segment.x
+                segment.pasty = segment.y
+                segment.x = self.segments[i-1].pastx
+                segment.y = self.segments[i-1].pasty
+
+
     def reset_snake(self):
-        self.snake_head_x = 1
-        self.snake_head_y = 8
-        self.snake_head= (1,8)
+        self.snake_head_x = self.starting_pos[0]
+        self.snake_head_y = self.starting_pos[1]
+        self.snake_head = self.starting_pos
+        self.segments = []
+
 
 '''
     def draw_tail(self):
