@@ -1,4 +1,6 @@
 import pickle
+
+import torch
 from scipy import ndimage, misc
 import numpy as np
 import pygame
@@ -66,6 +68,7 @@ class Board():
         self.action = None
         self.speed = 9000
         self.debug = []
+        self.previous_gan_action = None
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -76,8 +79,6 @@ class Board():
     def run(self):
 
         while self.running:
-
-
             pygame.display.flip()
             reward = self.collision.return_reward(self.height, self.width)
             self.clockobject.tick(self.speed)
@@ -87,15 +88,16 @@ class Board():
             self.process_input()
             self.snake.move_segmentation()
             self.snake.draw_segment()
-
-            action = self.dqn_agent.make_action(self.get_state(), reward,
+            img = self.get_state()
+            action = self.dqn_agent.make_action(img, reward,
                                                 True if reward == 10 or reward == -1 else False)
-
+            self.create_actions_channels(action, img)
             self.snake.action(action)
 
             self.tick += 1
             self.lose_win_scenario(reward)
             self.games_count += 1
+
     def draw_sprites(self):
         self.draw_board()
         self.apple.draw_apple()
@@ -176,19 +178,39 @@ class Board():
         # plt.show()
         # print(img.shape)
         img = ndimage.rotate(img, 270, reshape=False)
-        if self.index > 0:
-            plt.imshow(img)
-            plt.savefig(f"S'_images/{self.index-1}.png")
-            plt.close()
-
-
-
-        plt.imshow(img)
-        plt.savefig(f"S_images/{self.index}.png")
-        plt.close()
-        self.index += 1
+        # if self.index > 0:
+        #     plt.imshow(img)
+        #     plt.savefig(f"S'_images/{self.index-1}.png")
+        #     plt.close()
+        #
+        #
+        #
+        # plt.imshow(img)
+        # plt.savefig(f"S_images/{self.index}.png")
+        # plt.close()
+        # self.index += 1
 
         return img
+
+    def create_actions_channels(self, action, img):
+        action_vec = np.zeros(4)
+        action_vec[action] = 1
+        action = action_vec
+        action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action)\
+            .unsqueeze(1)\
+            .unsqueeze(2)
+
+        state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
+
+        if self.index > 0:
+            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+                future_state = torch.from_numpy(img).unsqueeze(0)
+                pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+            pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self.index += 1
+        self.previous_gan_action = action
 
 
 snake = Board(4, 4)
