@@ -90,7 +90,7 @@ class Board():
             self.snake.draw_segment()
             img = self.get_state()
             action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == 10 or reward == -1 else False)
+                                                True if reward == -1 else False) #was if reward == 10 or
             self.create_actions_channels(action, img)
             self.snake.action(action)
 
@@ -186,7 +186,7 @@ class Board():
         #
         #
         # plt.imshow(img)
-        # plt.savefig(f"S_images/{self.index}.png")
+        # plt.savefig(f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train\\S_images\\{self.index}.png")
         # plt.close()
         # self.index += 1
 
@@ -202,16 +202,19 @@ class Board():
 
         state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
 
-        if self.index > 0:
-            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
-                future_state = torch.from_numpy(img).unsqueeze(0)
-                pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
-            pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            self.index += 1
-        self.previous_gan_action = action
-
+        # if self.index > 0:
+        #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+        #         future_state = torch.from_numpy(img).unsqueeze(0)
+        #         pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #
+        # with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+        #     pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #     self.index += 1
+        # self.previous_gan_action = action
+        # generate validation images
+        with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
+         pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.index += 1
 
 snake = Board(4, 4)
 snake.run()

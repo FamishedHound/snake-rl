@@ -29,7 +29,7 @@ class Snake():
         for segment in self.segments:
             rect = pygame.Rect(segment.x * self.block_size, segment.y * self.block_size, self.block_size,
                                self.block_size)
-            pygame.draw.rect(self.screen.get_surface(), (0, 0, 200), rect)
+            pygame.draw.rect(self.screen.get_surface(), (167, 120, 100), rect)
 
     def action(self, action):
         actions = {0: "left",

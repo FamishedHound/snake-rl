@@ -26,7 +26,7 @@ class Segment():
         self.block_size = block_size
         self.screen = screen
 
-        self.segment_color = (255, 99, 71)
+        self.segment_color = (5, 1, 55)
 
     def draw_segment(self):
         rect = pygame.Rect(self.x * self.block_size, self.y * self.block_size, self.block_size, self.block_size)
