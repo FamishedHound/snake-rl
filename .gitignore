@@ -5,3 +5,4 @@ output/
 /train/S'_images
 /train/S_images
 train/
+validate_gan/

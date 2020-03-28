@@ -91,7 +91,7 @@ class Board():
             img = self.get_state()
             action = self.dqn_agent.make_action(img, reward,
                                                 True if reward == -1 else False) #was if reward == 10 or
-            self.create_actions_channels(action, img)
+            self.create_actions_channels(action, img,reward)
             self.snake.action(action)
 
             self.tick += 1
@@ -118,7 +118,7 @@ class Board():
             # print(reward)
 
             # Change me if you want random apple
-
+            self.apple.spawn_apple()
     def draw_board(self):
         for y in range(self.height):
             for x in range(self.width):
@@ -192,29 +192,40 @@ class Board():
 
         return img
 
-    def create_actions_channels(self, action, img):
+    def create_actions_channels(self, action, img,reward):
         action_vec = np.zeros(4)
         action_vec[action] = 1
         action = action_vec
+        np_reward = np.zeros(3)
+        #mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
+        if reward==10:
+            np_reward[0] = 1
+        elif reward==-1:
+            np_reward[1] =1
+        else:
+            np_reward[2] = 1
+        np_reward = torch.from_numpy(np_reward)
+        print("reward {} vector {}".format(reward,np_reward))
         action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action)\
             .unsqueeze(1)\
             .unsqueeze(2)
 
         state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
 
-        # if self.index > 0:
-        #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
-        #         future_state = torch.from_numpy(img).unsqueeze(0)
-        #         pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        #
-        # with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
-        #     pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        #     self.index += 1
-        # self.previous_gan_action = action
+
+        if self.index > 0:
+            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+                future_state = torch.from_numpy(img).unsqueeze(0)
+                pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+            pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self.index += 1
+        self.previous_gan_action = action
         # generate validation images
-        with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
-         pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        self.index += 1
+        # with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
+        #  pickle.dump((state_action,reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # self.index += 1
 
 snake = Board(4, 4)
 snake.run()
