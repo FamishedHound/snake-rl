@@ -61,7 +61,7 @@ class Board():
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
-                                   epsilon=0.4, save_model=True, load_model=True,
+                                   epsilon=0.8, save_model=True, load_model=True,
                                    path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
                                    epsilon_speed=1e-5)
         self.reward = 0
@@ -81,7 +81,7 @@ class Board():
         while self.running:
             pygame.display.flip()
             reward = self.collision.return_reward(self.height, self.width)
-            self.clockobject.tick(self.speed)
+            self.clockobject.tick(9000)
 
             self.draw_sprites()
 
@@ -89,9 +89,11 @@ class Board():
             self.snake.move_segmentation()
             self.snake.draw_segment()
             img = self.get_state()
+
+
             action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == -1 else False) #was if reward == 10 or
-            self.create_actions_channels(action, img,reward)
+                                                True if reward == -1 else False)  # was if reward == 10 or
+            self.create_actions_channels(action, img, reward)
             self.snake.action(action)
 
             self.tick += 1
@@ -118,7 +120,8 @@ class Board():
             # print(reward)
 
             # Change me if you want random apple
-            self.apple.spawn_apple()
+
+
     def draw_board(self):
         for y in range(self.height):
             for x in range(self.width):
@@ -133,8 +136,9 @@ class Board():
         green = pygame.surfarray.pixels_green(self.screen.get_surface())
         blue = pygame.surfarray.pixels_blue(self.screen.get_surface())
 
-        inside = np.array([red, green, blue]).transpose((1, 2, 0))
-
+        inside = np.array([red, green, blue]).transpose((2, 1, 0))
+        # plt.imshow(inside)
+        # plt.show()
         return self.ProcessGameImage(inside)
 
     def process_input(self):
@@ -177,7 +181,7 @@ class Board():
         # plt.imshow(img.astype(np.uint8))
         # plt.show()
         # print(img.shape)
-        img = ndimage.rotate(img, 270, reshape=False)
+        #img = ndimage.rotate(img, 270, reshape=False)
         # if self.index > 0:
         #     plt.imshow(img)
         #     plt.savefig(f"S'_images/{self.index-1}.png")
@@ -192,27 +196,42 @@ class Board():
 
         return img
 
-    def create_actions_channels(self, action, img,reward):
+    def create_actions_channels(self, action, img, reward):
+
+        # plt.imshow(img,cmap='gray',vmax=1,vmin=0)
+        # plt.show()
+
         action_vec = np.zeros(4)
         action_vec[action] = 1
         action = action_vec
         np_reward = np.zeros(3)
-        #mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
-        if reward==10:
+        # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
+        if reward == 10:
             np_reward[0] = 1
-        elif reward==-1:
-            np_reward[1] =1
+
+        elif reward == -1:
+            np_reward[1] = 1
+
         else:
             np_reward[2] = 1
+
         np_reward = torch.from_numpy(np_reward)
-        print("reward {} vector {}".format(reward,np_reward))
-        action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action)\
-            .unsqueeze(1)\
+        print("reward {} vector {}".format(reward, np_reward))
+        action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action) \
+            .unsqueeze(1) \
             .unsqueeze(2)
 
         state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
+        # state = torch.from_numpy(img)
+        # if self.index > 0:
+        #     with open(f"train_reward/future/state_s_{self.index - 1}.pickle", 'wb') as handle:
+        #
+        #         pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
+        #     pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #     self.index += 1
 
-
+        # GAN
         if self.index > 0:
             with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
                 future_state = torch.from_numpy(img).unsqueeze(0)
@@ -222,10 +241,12 @@ class Board():
             pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
             self.index += 1
         self.previous_gan_action = action
+
         # generate validation images
         # with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
         #  pickle.dump((state_action,reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
         # self.index += 1
+
 
 snake = Board(4, 4)
 snake.run()

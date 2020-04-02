@@ -30,4 +30,4 @@ class apple():
         return False
     def draw_apple(self):
         rect = pygame.Rect(self.x * self.block_size, self.y * self.block_size, self.block_size, self.block_size)
-        pygame.draw.rect(self.screen.get_surface(), (200, 0, 0), rect)
+        pygame.draw.rect(self.screen.get_surface(), (128, 128, 128), rect)

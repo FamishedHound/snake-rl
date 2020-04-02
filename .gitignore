@@ -4,5 +4,6 @@ output/
 /WorldModelsExperiments
 /train/S'_images
 /train/S_images
-train/
+train
 validate_gan/
+train_reward/
