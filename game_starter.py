@@ -61,7 +61,7 @@ class Board():
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
-                                   epsilon=0.8, save_model=True, load_model=True,
+                                   epsilon=1, save_model=True, load_model=False,
                                    path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
                                    epsilon_speed=1e-5)
         self.reward = 0
@@ -232,15 +232,15 @@ class Board():
         #     self.index += 1
 
         # GAN
-        if self.index > 0:
-            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
-                future_state = torch.from_numpy(img).unsqueeze(0)
-                pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
-            pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-            self.index += 1
-        self.previous_gan_action = action
+        # if self.index > 0:
+        #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+        #         future_state = torch.from_numpy(img).unsqueeze(0)
+        #         pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #
+        # with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+        #     pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #     self.index += 1
+        # self.previous_gan_action = action
 
         # generate validation images
         # with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
