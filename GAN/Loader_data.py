@@ -198,13 +198,13 @@ def train_gan():
     data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=16)
     model = UNet(5, 1).cuda()
-    # model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
+    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer_reward = Adam(model.parameters(), lr=0.0005)
     plot = []
     plot_reward = []
 
-    for epoch in range(30):
+    for epoch in range(20):
         model.train()
         running_loss = 0.0
 

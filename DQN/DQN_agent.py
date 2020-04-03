@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 from DQN.replay_memory import replay_memory
 import numpy as np
 from torch.autograd import Variable
-
+import matplotlib.pyplot as plt
 from GAN.model import UNet
+from GAN.reward_model import reward_model
 
 
 class DQN_agent():
@@ -47,8 +48,12 @@ class DQN_agent():
         self.plot = []
 
         self.gan = UNet(5, 1)
+        self.reward_predictor = reward_model(5)
         self.gan = self.gan.cuda()
+        self.reward_predictor = self.reward_predictor.cuda()
         self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
+        self.reward_predictor.load_state_dict(
+            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
 
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
@@ -57,10 +62,11 @@ class DQN_agent():
                 batch = self.memory.sample(self.batch_size)
                 states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
                     (self.batch_size, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((self.batch_size),
-                                                                                       requires_grad=True).cuda(), torch.empty(
+                                                                                                    requires_grad=True).cuda(), torch.empty(
                     (self.batch_size), requires_grad=True).cuda(), torch.empty((self.batch_size, self.frames, 84, 84),
-                                                                  requires_grad=True).cuda(), torch.empty((self.batch_size),
-                                                                                                          requires_grad=True).cuda(), torch.empty(
+                                                                               requires_grad=True).cuda(), torch.empty(
+                    (self.batch_size),
+                    requires_grad=True).cuda(), torch.empty(
                     (self.batch_size), requires_grad=True).cuda()
                 for i in range(len(batch)):
                     states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
@@ -123,30 +129,29 @@ class DQN_agent():
 
             if randy_random > self.epsilon:
 
-
                 if self.previous_action != None:
                     forbidden_move = self.forbidden_action()
                     network_response[0][forbidden_move] = -99
                     possible_actions = network_response[0]
                     values, indices = possible_actions.max(dim=0)
-                    #print(possible_actions)
+                    # print(possible_actions)
 
                     action = indices.item()
-                    #print("previous_action {} action {} forbidden_action {}".format(self.previous_action, action,forbidden_move))
+                    # print("previous_action {} action {} forbidden_action {}".format(self.previous_action, action,forbidden_move))
 
                 else:
                     action = indices.item()
 
             else:
                 actions = [0, 1, 2, 3]
-                if self.previous_action !=None:
+                if self.previous_action != None:
                     forbidden_move = self.forbidden_action()
                     actions.remove(forbidden_move)
                 action = random.choice(actions)
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state,action)
+            self.update_memory(reward, terminal, state, 50)
 
             self.flag = True
             self.previous_action = action
@@ -184,7 +189,8 @@ class DQN_agent():
                 torch.save(self.Q_network.state_dict(), "DQN_trained_model/10x10_model_with_tail.pt")
             print(self.epsilon)
             print(action)
-    #Update memory without GAN
+
+    # Update memory without GAN
     # def update_memory(self, reward, terminal, state):
     #     if self.flag:
     #         self.memory.append(
@@ -192,27 +198,59 @@ class DQN_agent():
     #              reward))
     #
     #         self.update_Q_network()
-    def update_memory(self, reward, terminal, state,action):
-        import torch
-        # action_vec = np.zeros(4)
-        # action_vec[action] = 1
-        # action = action_vec
+    def update_memory(self, reward, terminal, state, how_many_frames):
         self.gan.eval()
-        for x in range(4):
-
-            action_vec = np.zeros(4)
-            action_vec[x] = 1
-            action_input = action_vec
-            action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1, 1) * torch.from_numpy(action_input) \
-                .unsqueeze(1) \
-                .unsqueeze(2)
-            state_action = torch.cat([torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
-            future_state = self.gan(state_action.unsqueeze(0).cuda())
-            self.memory.append(
-                (state, action, reward, future_state, terminal,
-                 reward))
-
+        counter = 0
+        buffer_memory = []
+        current_states_to_generate = [state]
+        while len(buffer_memory) < how_many_frames:
+            temp = []
+            for states in current_states_to_generate:
+                for action_number in range(4):
+                    temp.append(self.recursive_memory_creation(state, action_number, buffer_memory))
+            current_states_to_generate = temp
+        [self.memory.append(x) for x in buffer_memory]
         self.update_Q_network()
+
+    def recursive_memory_creation(self, state, which_action, buffer_memory):
+
+        action_vec = np.zeros(4)
+        action_vec[which_action] = 1
+        action_input = action_vec
+        action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
+                                                                                                1) * torch.from_numpy(
+            action_input) \
+                            .unsqueeze(1) \
+                            .unsqueeze(2)
+        state_action = torch.cat(
+            [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
+        future_state = self.gan(state_action.unsqueeze(0).cuda())
+        now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
+        now_future = now_future.cuda()
+        reward = self.reward_predictor(now_future.unsqueeze(0))
+        reward = self.determine_reward(reward)
+        terminal = False
+        if reward == -1:
+            terminal = True
+        buffer_memory.append((state, which_action, reward, future_state, terminal, reward))
+        return future_state
+        # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
+        # plt.show()
+
+    # self.memory.append(
+    #     (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
+    #      reward))
+    def determine_reward(self, reward):
+        # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
+        reward_out = 0
+        if torch.all(torch.eq(reward, torch.Tensor([1, 0, 0]).cuda())):
+            reward = 10
+        elif torch.all(torch.eq(reward, torch.Tensor([0, 1, 0]).cuda())):
+            reward = -1
+        elif torch.all(torch.eq(reward, torch.Tensor([0, 0, 1]).cuda())):
+            reward = -0.1
+
+        return reward_out
 
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
