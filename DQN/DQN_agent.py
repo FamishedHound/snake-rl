@@ -54,7 +54,8 @@ class DQN_agent():
         self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
         self.reward_predictor.load_state_dict(
             torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
-
+        self.gan.eval()
+        self.reward_predictor.eval()
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
 
@@ -151,7 +152,7 @@ class DQN_agent():
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state, 50)
+            self.update_memory(reward, terminal, state, 20)
 
             self.flag = True
             self.previous_action = action
@@ -207,50 +208,50 @@ class DQN_agent():
             temp = []
             for states in current_states_to_generate:
                 for action_number in range(4):
-                    temp.append(self.recursive_memory_creation(state, action_number, buffer_memory))
+                    temp.append(self.recursive_memory_creation(states, action_number, buffer_memory))
             current_states_to_generate = temp
         [self.memory.append(x) for x in buffer_memory]
         self.update_Q_network()
 
     def recursive_memory_creation(self, state, which_action, buffer_memory):
+        with torch.no_grad:
+            action_vec = np.zeros(4)
+            action_vec[which_action] = 1
+            action_input = action_vec
+            action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
+                                                                                                    1) * torch.from_numpy(
+                action_input) \
+                                .unsqueeze(1) \
+                                .unsqueeze(2)
+            state_action = torch.cat(
+                [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
+            future_state = self.gan(state_action.unsqueeze(0).cuda())
+            now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
+            now_future = now_future.cuda()
+            reward = self.reward_predictor(now_future.unsqueeze(0))
+            reward = self.determine_reward(reward)
 
-        action_vec = np.zeros(4)
-        action_vec[which_action] = 1
-        action_input = action_vec
-        action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
-                                                                                                1) * torch.from_numpy(
-            action_input) \
-                            .unsqueeze(1) \
-                            .unsqueeze(2)
-        state_action = torch.cat(
-            [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
-        future_state = self.gan(state_action.unsqueeze(0).cuda())
-        now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
-        now_future = now_future.cuda()
-        reward = self.reward_predictor(now_future.unsqueeze(0))
-        reward = self.determine_reward(reward)
-        terminal = False
-        if reward == -1:
-            terminal = True
-        buffer_memory.append((state, which_action, reward, future_state, terminal, reward))
-        return future_state
-        # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
-        # plt.show()
+            terminal = False
+            terminal_reward = 0
 
-    # self.memory.append(
-    #     (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
-    #      reward))
+            if reward == -1:
+                terminal = True
+                terminal_reward=-1
+            buffer_memory.append((state, which_action, reward, future_state, terminal, terminal_reward))
+            return future_state
+            # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
+            # plt.show()
+
+        # self.memory.append(
+        #     (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
+        #      reward))
     def determine_reward(self, reward):
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
-        reward_out = 0
-        if torch.all(torch.eq(reward, torch.Tensor([1, 0, 0]).cuda())):
-            reward = 10
-        elif torch.all(torch.eq(reward, torch.Tensor([0, 1, 0]).cuda())):
-            reward = -1
-        elif torch.all(torch.eq(reward, torch.Tensor([0, 0, 1]).cuda())):
-            reward = -0.1
 
-        return reward_out
+        rewards = [10,-1,-0.1]
+        reward_in = torch.argmax(reward).item()
+
+        return rewards[reward_in]
 
     def sync_networks(self):
         if self.sync_counter % 10 == 0:

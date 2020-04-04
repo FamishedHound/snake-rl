@@ -61,9 +61,9 @@ class Board():
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
-                                   epsilon=0, save_model=False, load_model=False,
+                                   epsilon=1, save_model=True, load_model=False,
                                    path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
-                                   epsilon_speed=1e-4)
+                                   epsilon_speed=1e-5)
         self.reward = 0
         self.action = None
         self.speed = 9000
