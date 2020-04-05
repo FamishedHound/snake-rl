@@ -196,7 +196,7 @@ def train_gan():
                              transforms.ToPILImage()]
     train_transforms = transforms.Compose(train_transforms_list)
     data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
-    data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=16)
+    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
     model = UNet(5, 1).cuda()
     model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)

@@ -60,10 +60,10 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.001, discount_factor=0.99, batch_size=32,
-                                   epsilon=1, save_model=True, load_model=False,
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=32,
+                                   epsilon=1, save_model=False, load_model=True,
                                    path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
-                                   epsilon_speed=1e-5)
+                                   epsilon_speed=1e-4)
         self.reward = 0
         self.action = None
         self.speed = 9000
@@ -92,7 +92,7 @@ class Board():
 
 
             action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == -1 else False)  # was if reward == 10 or
+                                                True if reward == -1 or reward==10 else False)  # was if reward == 10 or
             self.create_actions_channels(action, img, reward)
             self.snake.action(action)
 
@@ -229,9 +229,9 @@ class Board():
         #         pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
         # with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
         #     pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-        #     self.index += 1
-
-        # GAN
+        #
+        #
+        # # GAN
         # if self.index > 0:
         #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
         #         future_state = torch.from_numpy(img).unsqueeze(0)
@@ -239,13 +239,14 @@ class Board():
         #
         # with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
         #     pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-        #     self.index += 1
-        # self.previous_gan_action = action
+
+
 
         # generate validation images
         # with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
         #  pickle.dump((state_action,reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-        # self.index += 1
+        self.previous_gan_action = action
+        self.index += 1
 
 
 snake = Board(4, 4)

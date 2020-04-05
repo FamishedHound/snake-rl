@@ -33,7 +33,7 @@ class DQN_agent():
 
         self.discount_factor = discount_factor
         self.target_network.load_state_dict(self.Q_network.state_dict())
-        self.memory = replay_memory(1000000)
+        self.memory = replay_memory(10000)
         self.epochs = 20
 
         self.frames = frames
@@ -152,8 +152,8 @@ class DQN_agent():
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state, 20)
-
+            self.update_memory(reward, terminal, state, 50)
+            #self.update_memory(reward, terminal, state)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -184,9 +184,11 @@ class DQN_agent():
         if self.epsilon > 0.1:  # WAS 0.1 CHANGE ME THIS IS TEST !!
             self.epsilon -= self.epsilon_speed
 
-        if self.x % 1111 == 0:
+        if self.x % 111 == 0:
+            self.show_some_memory()
             if self.save_model:
                 print("weights saved :) ")
+
                 torch.save(self.Q_network.state_dict(), "DQN_trained_model/10x10_model_with_tail.pt")
             print(self.epsilon)
             print(action)
@@ -214,7 +216,7 @@ class DQN_agent():
         self.update_Q_network()
 
     def recursive_memory_creation(self, state, which_action, buffer_memory):
-        with torch.no_grad:
+        with torch.no_grad():
             action_vec = np.zeros(4)
             action_vec[which_action] = 1
             action_input = action_vec
@@ -252,7 +254,14 @@ class DQN_agent():
         reward_in = torch.argmax(reward).item()
 
         return rewards[reward_in]
-
+    def show_some_memory(self):
+        for x in self.memory.sample(10):
+            (state, which_action, reward, future_state, terminal, terminal_reward) = x
+            plt.imshow(state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+            plt.show()
+            plt.imshow(future_state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+            plt.show()
+            print(f"a{which_action}, r{reward}, is_t{terminal_reward} , t_r{terminal_reward}")
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
             self.update_target_network()
