@@ -152,7 +152,7 @@ class DQN_agent():
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state, 50)
+            self.update_memory(reward, terminal, state, 20)
             #self.update_memory(reward, terminal, state)
             self.flag = True
             self.previous_action = action
@@ -185,7 +185,7 @@ class DQN_agent():
             self.epsilon -= self.epsilon_speed
 
         if self.x % 111 == 0:
-            self.show_some_memory()
+            #self.show_some_memory()
             if self.save_model:
                 print("weights saved :) ")
 
@@ -239,6 +239,9 @@ class DQN_agent():
             if reward == -1:
                 terminal = True
                 terminal_reward=-1
+            elif reward==10:
+                terminal=True
+                terminal_reward=10
             buffer_memory.append((state, which_action, reward, future_state, terminal, terminal_reward))
             return future_state
             # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)

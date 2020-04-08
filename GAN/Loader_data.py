@@ -1,4 +1,6 @@
 import pickle
+import random
+
 import numpy as np
 from PIL.ImageFile import ImageFile
 from torch.nn import BCELoss, CrossEntropyLoss, BCEWithLogitsLoss
@@ -118,40 +120,45 @@ def train_reward_model():
     train_transforms_list = [transforms.ToTensor(),
                              transforms.ToPILImage()]
     train_transforms = transforms.Compose(train_transforms_list)
-    data_train = RewardDataset(balance_files(), transform=train_transforms)
-    data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=16)
 
-    model = reward_model(5).cuda()
-    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
-    optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     plot = []
-    for epoch in range(20):
-        model.train()
-        running_loss = 0.0
+    for shuffle in range(10):
+        data_train = RewardDataset(balance_files(), transform=train_transforms)
+        data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=16)
 
-        for i, img in enumerate(data_train_loader):
-            state, actual_reward = img
-            optimizer.zero_grad()
+        model = reward_model(5).cuda()
+        model.load_state_dict(
+            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
+        optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
+        for epoch in range(30):
+            model.train()
+            running_loss = 0.0
 
-            actual_reward = actual_reward.float().cuda()
-            state = state.float().cuda()
-            models_reward = model(state)
-            actual_reward = torch.argmax(actual_reward, dim=1)
-            loss_reward = CrossEntropyLoss()(models_reward, actual_reward.long())
+            for i, img in enumerate(data_train_loader):
+                state, actual_reward = img
+                optimizer.zero_grad()
 
-            running_loss += loss_reward.item()
+                actual_reward = actual_reward.float().cuda()
+                state = state.float().cuda()
+                models_reward = model(state)
+                actual_reward = torch.argmax(actual_reward, dim=1)
+                loss_reward = CrossEntropyLoss()(models_reward, actual_reward.long())
 
-            plot.append(loss_reward.item())
+                running_loss += loss_reward.item()
 
-            loss_reward.backward()
-            print("predicted reward {} actual reward {}".format(torch.argmax(models_reward[0]).item(),actual_reward[0].item()))
-            print(f"loss image {running_loss / (i + 1)}")
+                plot.append(loss_reward.item())
 
-            optimizer.step()
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt")
-    plt.plot(plot)
-    plt.show()
+                loss_reward.backward()
+                print("predicted reward {} actual reward {}".format(torch.argmax(models_reward[0]).item(),
+                                                                    actual_reward[0].item()))
+                print(f"loss image {running_loss / (i + 1)}")
+
+                optimizer.step()
+        print("finished shuffle {} ".format(shuffle))
+        torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt")
+        plt.plot(plot)
+        plt.show()
 
 
 def balance_files():
@@ -162,6 +169,8 @@ def balance_files():
     data_path_2 = []
     counter_3 = 0
     data_path_3 = []
+    counter = 0
+
     for fname in os.listdir(data_path + "\\"):
         for plik in os.listdir(data_path + "\\" + fname):
             if fname == "now":
@@ -178,11 +187,15 @@ def balance_files():
                 elif torch.all(torch.eq(reward, torch.Tensor([0, 0, 1]))):
                     counter_3 += 1
                     data_path_3.append(path_to_file)
+                counter += 1
+                if counter == 75000:
+                    break
     print(f"{counter_1} {counter_2} {counter_3}")
     lowest_value = min(len(data_path_1), len(data_path_2), len(data_path_3))
-    balanced_list = data_path_1[:lowest_value] + data_path_2[:lowest_value] + data_path_3[:lowest_value]
+    balanced_list = random.sample(data_path_1, lowest_value) + random.sample(data_path_2, lowest_value) + random.sample(
+        data_path_3, lowest_value)
 
-    return data_path_1 + data_path_2+data_path_3
+    return balanced_list
 
 
 def train_gan():
@@ -292,7 +305,7 @@ if __name__ == '__main__':
     data_path2 = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward"
     # train,val = DeblurDataset(data_path).get_paths()
 
-    train_gan()
+    # train_gan()
     # validate_gan()
     # balance_files()
-    #train_reward_model()
+    train_reward_model()
