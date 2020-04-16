@@ -12,7 +12,7 @@ class collision():
 
             self.snake.add_segment(self.apple.x,self.apple.y)
 
-            self.apple.spawn_apple()
+
             return 10
         if self.snake.snake_head_x<0 or self.snake.snake_head_x >height-1:
 

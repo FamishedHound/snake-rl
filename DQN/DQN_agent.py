@@ -53,9 +53,10 @@ class DQN_agent():
         self.reward_predictor = self.reward_predictor.cuda()
         self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
         self.reward_predictor.load_state_dict(
-            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
+            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
         self.gan.eval()
         self.reward_predictor.eval()
+
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
 
@@ -152,8 +153,8 @@ class DQN_agent():
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state, 20)
-            #self.update_memory(reward, terminal, state)
+            #self.update_memory(reward, terminal, state, 20)
+            self.update_memory(reward, terminal, state)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -184,7 +185,7 @@ class DQN_agent():
         if self.epsilon > 0.1:  # WAS 0.1 CHANGE ME THIS IS TEST !!
             self.epsilon -= self.epsilon_speed
 
-        if self.x % 111 == 0:
+        if self.x % 211 == 0:
             #self.show_some_memory()
             if self.save_model:
                 print("weights saved :) ")
@@ -194,13 +195,14 @@ class DQN_agent():
             print(action)
 
     # Update memory without GAN
-    # def update_memory(self, reward, terminal, state):
-    #     if self.flag:
-    #         self.memory.append(
-    #             (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
-    #              reward))
-    #
-    #         self.update_Q_network()
+    def update_memory(self, reward, terminal, state):
+        if self.flag:
+            self.memory.append(
+                (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
+                 reward))
+
+            self.update_Q_network()
+
     def update_memory(self, reward, terminal, state, how_many_frames):
         self.gan.eval()
         counter = 0
@@ -210,61 +212,91 @@ class DQN_agent():
             temp = []
             for states in current_states_to_generate:
                 for action_number in range(4):
-                    temp.append(self.recursive_memory_creation(states, action_number, buffer_memory))
+                    result = self.recursive_memory_creation(states, action_number, buffer_memory)
+
+                    temp.append(result)
+
             current_states_to_generate = temp
         [self.memory.append(x) for x in buffer_memory]
         self.update_Q_network()
 
     def recursive_memory_creation(self, state, which_action, buffer_memory):
         with torch.no_grad():
-            action_vec = np.zeros(4)
-            action_vec[which_action] = 1
-            action_input = action_vec
-            action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
-                                                                                                    1) * torch.from_numpy(
-                action_input) \
-                                .unsqueeze(1) \
-                                .unsqueeze(2)
-            state_action = torch.cat(
-                [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
-            future_state = self.gan(state_action.unsqueeze(0).cuda())
-            now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
-            now_future = now_future.cuda()
-            reward = self.reward_predictor(now_future.unsqueeze(0))
-            reward = self.determine_reward(reward)
+            if state!=None:
+                action_vec = np.zeros(4)
+                action_vec[which_action] = 1
+                action_input = action_vec
+                action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
+                                                                                                        1) * torch.from_numpy(
+                    action_input) \
+                                    .unsqueeze(1) \
+                                    .unsqueeze(2)
+                state_action = torch.cat(
+                    [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()],
+                    dim=0)
+                future_state = self.gan(state_action.unsqueeze(0).cuda())
+                now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
+                now_future = now_future.cuda()
 
-            terminal = False
-            terminal_reward = 0
+                future_state_action = torch.cat(
+                    [torch.from_numpy(future_state.cpu().numpy().squeeze()).unsqueeze(0).cuda(),
+                     action_output.float().cuda()], dim=0)
+                future_future_state = self.gan(future_state_action.unsqueeze(0).cuda())
+                future_future_reward = torch.cat(
+                    [future_state.squeeze().unsqueeze(0), future_future_state.squeeze().unsqueeze(0)], 0)
 
-            if reward == -1:
-                terminal = True
-                terminal_reward=-1
-            elif reward==10:
-                terminal=True
-                terminal_reward=10
-            buffer_memory.append((state, which_action, reward, future_state, terminal, terminal_reward))
-            return future_state
+                reward = self.reward_predictor(now_future.unsqueeze(0))
+                reward = self.determine_reward(reward)
+
+                terminal_reward = self.reward_predictor(future_future_reward.unsqueeze(0))
+                terminal_reward = self.determine_reward(terminal_reward)
+                if terminal_reward == 10:
+                    print(terminal_reward)
+                    plt.imshow(state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
+                    plt.show()
+                    plt.imshow(future_state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
+                    plt.show()
+                    plt.imshow(future_future_state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
+                    plt.show()
+                    exit(1)
+                terminal = False
+
+
+                if terminal_reward == -1:
+                    terminal = True
+
+                elif terminal_reward == 10:
+                    terminal = True
+
+
+                if reward !=10 and terminal_reward!=10:
+                    buffer_memory.append((state, which_action, reward, future_state, terminal, terminal_reward))
+
+                return future_state
             # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
             # plt.show()
 
         # self.memory.append(
         #     (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
         #      reward))
+
     def determine_reward(self, reward):
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
 
-        rewards = [10,-1,-0.1]
+        rewards = [10, -1, -0.1]
         reward_in = torch.argmax(reward).item()
 
         return rewards[reward_in]
+
     def show_some_memory(self):
         for x in self.memory.sample(10):
             (state, which_action, reward, future_state, terminal, terminal_reward) = x
-            plt.imshow(state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+            plt.imshow(state.cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
             plt.show()
-            plt.imshow(future_state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+            plt.imshow(future_state.cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
             plt.show()
             print(f"a{which_action}, r{reward}, is_t{terminal_reward} , t_r{terminal_reward}")
+
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
             self.update_target_network()
