@@ -1,6 +1,4 @@
-from copy import deepcopy
-
-from current_run import single_game
+from gym_snake.gym_snake.envs.current_run import single_game
 
 
 class games_manager():

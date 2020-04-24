@@ -1,9 +1,7 @@
 import pickle
 import random
-from copy import deepcopy
 
-from Q_table import Q_table
-from State import state
+from gym_snake.gym_snake.envs.State import state
 
 
 class single_game():

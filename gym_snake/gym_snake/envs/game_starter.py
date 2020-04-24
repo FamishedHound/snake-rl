@@ -1,32 +1,16 @@
-import os
-import pickle
-from time import sleep
-
 import torch
-from scipy import ndimage, misc
 import numpy as np
 import pygame
-import matplotlib.pyplot as plt
 from DQN.DQN_agent import DQN_agent
 from Function_approx.approximator import f_approximation
-from apple import apple
-from collision_handler import collision
-from games_manager import games_manager
-from snake import Snake
+from gym_snake.gym_snake.envs.apple import apple
+from gym_snake.gym_snake.envs.collision_handler import collision
+from gym_snake.gym_snake.envs.games_manager import games_manager
+from gym_snake.gym_snake.envs.snake import Snake
 import skimage as skimage
-from skimage import transform, color, exposure
+from skimage import color
 import cv2
-from skimage.transform import rotate
-from pygame.locals import (
-    K_UP,
-    K_DOWN,
-    K_LEFT,
-    K_RIGHT,
-    K_ESCAPE,
-    KEYDOWN,
-    QUIT,
-)
-
+import gym
 snake_starting_pos = (1, 3)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
@@ -34,7 +18,7 @@ load_tables_from_file = (False, "9x9model")
 range_of_apple_spawn = (1, 2)
 
 
-class Board():
+class Board(gym.Env):
     def __init__(self, height, width):
         self.clockobject = pygame.time.Clock()
 
@@ -63,10 +47,10 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
         self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=2, learning_rate=0.01, discount_factor=0.99, batch_size=48,
-                                   epsilon=0.1, save_model=False, load_model=True,
-                                   path="C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\DQN_trained_model\\10x10_model_with_tail_new.pt",
-                                   epsilon_speed=1e-7,snake=self.snake)
+        # self.dqn_agent = DQN_agent(action_number=4, frames=2, learning_rate=0.01, discount_factor=0.99, batch_size=48,
+        #                            epsilon=0.1, save_model=False, load_model=True,
+        #                            path="/DQN_trained_model/10x10_model_with_tail_new.pt",
+        #                            epsilon_speed=1e-7, snake=self.snake)
         self.reward = 0
         self.action = None
         self.speed = 9000
@@ -79,46 +63,73 @@ class Board():
         else:
             self.epsilon = 0.1
 
-    def run(self):
+    # def run(self):
+    #
+    #     while self.running:
+    #         pygame.display.flip()
+    #         reward = self.collision.return_reward(self.height, self.width)
+    #         self.clockobject.tick(self.speed)
+    #
+    #         self.draw_sprites()
+    #
+    #         self.process_input()
+    #         self.snake.move_segmentation()
+    #         self.snake.draw_segment()
+    #         img = self.get_state()
+    #
+    #         # action = self.dqn_agent.make_action(img, reward,
+    #         #                                     True if reward == -1  else False)  # was if reward == 10 or
+    #         # #old DQN
+    #         action = self.dqn_agent.make_action(img, reward,
+    #                                             True if reward == -1 or reward == 10 else False)
+    #         self.create_actions_channels(action, img, reward)
+    #
+    #         self.snake.action(action)
+    #
+    #         self.tick += 1
+    #         self.lose_win_scenario(reward)
+    #         self.games_count += 1
+    def step(self, action):
+        pygame.display.flip()
+        self.reward = self.collision.return_reward(self.height, self.width)
+        self.clockobject.tick(self.speed)
 
-        while self.running:
-            pygame.display.flip()
-            reward = self.collision.return_reward(self.height, self.width)
-            self.clockobject.tick(self.speed)
+        self.draw_sprites()
 
-            self.draw_sprites()
+        self.process_input()
+        self.snake.move_segmentation()
 
-            self.process_input()
-            self.snake.move_segmentation()
-            self.snake.draw_segment()
-            img = self.get_state()
+        self.snake.draw_segment()
+        img = self.get_state()
 
-            # action = self.dqn_agent.make_action(img, reward,
-            #                                     True if reward == -1  else False)  # was if reward == 10 or
-            # #old DQN
-            action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == -1 or reward == 10 else False)
-            self.create_actions_channels(action, img, reward)
 
-            self.snake.action(action)
 
-            self.tick += 1
-            self.lose_win_scenario(reward)
-            self.games_count += 1
+        self.create_actions_channels(action, img, self.reward)
+
+        self.snake.action(action)
+
+        self.tick += 1
+
+        self.games_count += 1
+        self.create_actions_channels(action, img, self.reward)
+
+        return [img, self.reward, True if self.reward==-1 else False, None]
+    def reset(self):
+        self.lose_win_scenario()
 
     def draw_sprites(self):
         self.draw_board()
         self.apple.draw_apple()
         self.snake.draw_snake()
 
-    def lose_win_scenario(self, reward):
-        if reward == -1 or reward == 10:
+    def lose_win_scenario(self):
+        if self.reward == -1 :
 
-            if reward == -1:
+            if self.reward == -1:
                 print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
                 self.snake.reset_snake()
-            if reward == 10:
+            if self.reward == 10:
                 self.longest_streak += 1
                 if self.longest_streak == 110:
                     self.epsilon = 0
@@ -261,5 +272,4 @@ class Board():
         self.index += 1
 
 
-snake = Board(4, 4)
-snake.run()
+

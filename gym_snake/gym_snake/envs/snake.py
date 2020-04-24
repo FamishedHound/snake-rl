@@ -1,8 +1,6 @@
-from time import sleep
-
 import pygame
 
-from snake_segment import Segment
+from gym_snake.gym_snake.envs.snake_segment import Segment
 
 
 class Snake():
