@@ -116,7 +116,8 @@ class Board(gym.Env):
         return [img, self.reward, True if self.reward==-1 else False, None]
     def reset(self):
         self.lose_win_scenario()
-
+        img = self.get_state()
+        return img,self.reward
     def draw_sprites(self):
         self.draw_board()
         self.apple.draw_apple()
