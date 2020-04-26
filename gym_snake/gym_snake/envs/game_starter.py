@@ -63,56 +63,27 @@ class Board(gym.Env):
         else:
             self.epsilon = 0.1
 
-    # def run(self):
-    #
-    #     while self.running:
-    #         pygame.display.flip()
-    #         reward = self.collision.return_reward(self.height, self.width)
-    #         self.clockobject.tick(self.speed)
-    #
-    #         self.draw_sprites()
-    #
-    #         self.process_input()
-    #         self.snake.move_segmentation()
-    #         self.snake.draw_segment()
-    #         img = self.get_state()
-    #
-    #         # action = self.dqn_agent.make_action(img, reward,
-    #         #                                     True if reward == -1  else False)  # was if reward == 10 or
-    #         # #old DQN
-    #         action = self.dqn_agent.make_action(img, reward,
-    #                                             True if reward == -1 or reward == 10 else False)
-    #         self.create_actions_channels(action, img, reward)
-    #
-    #         self.snake.action(action)
-    #
-    #         self.tick += 1
-    #         self.lose_win_scenario(reward)
-    #         self.games_count += 1
+
     def step(self, action):
         pygame.display.flip()
-        self.reward = self.collision.return_reward(self.height, self.width)
+
         self.clockobject.tick(self.speed)
 
-
-
-
-
-
-
         self.snake.action(action)
-
+        self.reward = self.collision.return_reward(self.height, self.width)
         self.tick += 1
-
         self.games_count += 1
+        if self.reward==10:
+            print("win")
+        elif self.reward==-1:
+            print("lose")
 
-
-        #self.create_actions_channels(action, img, self.reward)
         self.render()
         img = self.get_state()
-        return [img, self.reward, True if self.reward==-1 or self.reward==10 else False, None]
+        return [img, self.reward, True if self.reward==-1 or self.reward==10  else False, None]
     def reset(self):
-        self.lose_win_scenario()
+        self.snake.reset_snake()
+        self.render()
         img = self.get_state()
         return img,self.reward
     def render(self, mode='human', close=False):
@@ -132,14 +103,15 @@ class Board(gym.Env):
             if self.reward == -1:
                 #print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
+
                 #self.snake.reset_snake() before debugging
             if self.reward == 10:
                 self.longest_streak += 1
                 if self.longest_streak == 110:
                     self.epsilon = 0
 
-
-            self.snake.reset_snake() # debugging
+            self.snake.reset_snake()
+             # debugging
             # Change me if you want random apple
 
     def draw_board(self):

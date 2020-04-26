@@ -21,7 +21,7 @@ class collision():
         if self.snake.snake_head_y < 0 or self.snake.snake_head_y > width-1:
             self.apple.spawn_apple()
             return -1
-        if self.snake.snake_head_x<1 or self.snake.snake_head_x>1: #debug delete me after
+        if self.snake.snake_head_x<1 or self.snake.snake_head_x>1:
             return -1
         for segment in self.snake.segments:
             if self.snake.snake_head_x==segment.x and self.snake.snake_head_y==segment.y:
