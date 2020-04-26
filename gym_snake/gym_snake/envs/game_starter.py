@@ -51,7 +51,7 @@ class Board(gym.Env):
         #                            epsilon=0.1, save_model=False, load_model=True,
         #                            path="/DQN_trained_model/10x10_model_with_tail_new.pt",
         #                            epsilon_speed=1e-7, snake=self.snake)
-        self.reward = 0
+        self.reward = -0.1
         self.action = None
         self.speed = 9000
         self.debug = []
@@ -94,49 +94,52 @@ class Board(gym.Env):
         self.reward = self.collision.return_reward(self.height, self.width)
         self.clockobject.tick(self.speed)
 
-        self.draw_sprites()
-
-        self.process_input()
-        self.snake.move_segmentation()
-
-        self.snake.draw_segment()
-        img = self.get_state()
 
 
 
-        self.create_actions_channels(action, img, self.reward)
+
+
 
         self.snake.action(action)
 
         self.tick += 1
 
         self.games_count += 1
-        self.create_actions_channels(action, img, self.reward)
 
-        return [img, self.reward, True if self.reward==-1 else False, None]
+
+        #self.create_actions_channels(action, img, self.reward)
+        self.render()
+        img = self.get_state()
+        return [img, self.reward, True if self.reward==-1 or self.reward==10 else False, None]
     def reset(self):
         self.lose_win_scenario()
         img = self.get_state()
         return img,self.reward
+    def render(self, mode='human', close=False):
+        self.draw_sprites()
+
+        self.snake.move_segmentation()
+        self.snake.draw_segment()
+        self.process_input()
     def draw_sprites(self):
         self.draw_board()
         self.apple.draw_apple()
         self.snake.draw_snake()
 
     def lose_win_scenario(self):
-        if self.reward == -1 :
+        if self.reward == -1 or self.reward == 10 :
 
             if self.reward == -1:
-                print("Apple score {}".format(self.longest_streak))
+                #print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
-                self.snake.reset_snake()
+                #self.snake.reset_snake() before debugging
             if self.reward == 10:
                 self.longest_streak += 1
                 if self.longest_streak == 110:
                     self.epsilon = 0
 
-            # print(reward)
 
+            self.snake.reset_snake() # debugging
             # Change me if you want random apple
 
     def draw_board(self):

@@ -17,8 +17,12 @@ class apple():
         while self.is_apple_on_snake(self.x,self.y):
             self.x = random.randint(0, self.width-1)
             self.y = random.randint(0, self.width-1)
-        print("position of apple {} {}".format(self.x,self.y))
-        self.apple_position = (self.x, self.y)
+
+        #debug
+        #self.apple_position = (self.x, self.y)
+        self.apple_position = (1, 0)
+        self.x=1
+        self.y=0
     def is_apple_on_snake(self,x,y):
 
         for segment in self.snake.segments:
