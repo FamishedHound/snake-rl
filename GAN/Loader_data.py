@@ -81,19 +81,26 @@ class RewardDataset(Dataset):
         if not self.val:
             path = self.dataset[
                 index]
-            path_future = self.dataset[
-                index].replace("now","future")
-            (state, reward) = pickle.load(open(path, "rb"))
-            future = pickle.load(open(path_future, "rb"))
+
+            (state, future, reward, action) = pickle.load(open(path, "rb"))
+            state = state.cpu()
+            future= future.cpu()
+            reward=reward
+            action=action
+            action_vec = np.zeros(4)
+            action_vec[action] = 1
+            action = action_vec
+
             # plt.imshow(state, cmap='gray')
             # plt.show()
-
-
+            action = torch.ones_like(state).repeat(2, 1, 1) * torch.from_numpy(action) \
+                .unsqueeze(1) \
+                .unsqueeze(2)
 
             # plt.imshow(future, cmap='gray')
             # plt.show()
-            state_future = torch.cat([state.unsqueeze(0), future.unsqueeze(0)], 0)
-            return state_future, reward
+            current_state = torch.cat([state.cpu(), action.float()], 0)
+            return current_state, future, reward, action
 
 
 class RewardPathsDataset(object):
@@ -123,14 +130,14 @@ def train_reward_model():
     train_transforms = transforms.Compose(train_transforms_list)
 
     plot = []
-    #for shuffle in range(5):
-    data_train = RewardDataset(balance_files(), transform=train_transforms)
+    # for shuffle in range(5):
+    data_train = RewardDataset(RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train, transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
 
-    model = reward_model(5).cuda()
+    model = reward_model(6).cuda()
 
-    model.load_state_dict(
-    torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
+    # model.load_state_dict(
+    #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
 
     model.train()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -139,11 +146,11 @@ def train_reward_model():
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            state, actual_reward = img
+            current_state,future,reward,action  = img
             optimizer.zero_grad()
 
-            actual_reward = actual_reward.float().cuda()
-            state = state.float().cuda()
+            actual_reward = actual_reward.cuda()
+            state = state.cuda()
             models_reward = model(state)
             actual_reward = torch.argmax(actual_reward, dim=1)
             loss_reward = CrossEntropyLoss()(models_reward, actual_reward.long())
@@ -164,8 +171,9 @@ def train_reward_model():
             print(f"loss image {running_loss / (i + 1)}")
 
             optimizer.step()
-    #print("finished shuffle {} ".format(shuffle))
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt")
+    # print("finished shuffle {} ".format(shuffle))
+    torch.save(model.state_dict(),
+               "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame.pt")
     plt.plot(plot)
     plt.show()
 
@@ -203,9 +211,9 @@ def balance_files():
     print(f"{counter_1} {counter_2} {counter_3}")
     lowest_value = min(len(data_path_1), len(data_path_2), len(data_path_3))
     balanced_list = random.sample(data_path_1, lowest_value) + random.sample(data_path_2, lowest_value) + random.sample(
-        data_path_3, 3*lowest_value)
+        data_path_3, 3 * lowest_value)
 
-    return data_path_1+data_path_2+data_path_3
+    return data_path_1 + data_path_2 + data_path_3
 
 
 def train_gan():
@@ -218,29 +226,31 @@ def train_gan():
     train_transforms_list = [transforms.ToTensor(),
                              transforms.ToPILImage()]
     train_transforms = transforms.Compose(train_transforms_list)
-    data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
-    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
-    model = UNet(5, 1).cuda()
-    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
+    data_train = RewardDataset(
+        RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train,
+        transform=train_transforms)
+    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=2)
+    model = UNet(6, 2).cuda()
+    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt"))
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer_reward = Adam(model.parameters(), lr=0.0005)
     plot = []
     plot_reward = []
 
-    for epoch in range(40):
+    for epoch in range(1):
         model.train()
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            img_blur, img_sharp = img
+            current_state, future, reward, action = img
             optimizer.zero_grad()
 
-            img_sharp = img_sharp.float().cuda()
-            img_blur = img_blur.float().cuda()
+            img_sharp = future.cuda()
+            img_blur = current_state.cuda()
             img_deblur = model(img_blur)
 
             # loss_reward = BCEWithLogitsLoss()(reward , reward_actual)
-            loss = mse_loss(img_deblur, img_sharp)
+            loss = mse_loss(target=img_deblur, input=img_sharp)
 
             running_loss += loss.item()
 
@@ -256,21 +266,24 @@ def train_gan():
         # plt.plot(plot)
         # plt.show()
         if epoch % 5 == 0:
-            torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt")
+            torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt")
     plt.plot(plot_reward)
     plt.show()
     print(f"finished epoch {epoch}")
     input_image = img_blur[0][0].detach().cpu().numpy().squeeze()
     predicted_output_img = img_deblur[0].detach().cpu().numpy().squeeze()
     actual_output = img_sharp[0].detach().cpu().numpy().squeeze()
-    plt.imshow(input_image)
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt")
+
+
+    plt.imshow(predicted_output_img[0],cmap='gray',vmax=1,vmin=0)
     plt.show()
-    plt.imshow(predicted_output_img)
+    plt.imshow(predicted_output_img[1],cmap='gray',vmax=1,vmin=0)
     plt.show()
-    plt.imshow(actual_output)
+    plt.imshow(actual_output[0],cmap='gray',vmax=1,vmin=0)
     plt.show()
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt")
+    plt.imshow(actual_output[1],cmap='gray',vmax=1,vmin=0)
+    plt.show()
+    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt")
     plt.plot(plot)
     plt.show()
 
@@ -331,7 +344,7 @@ def validate_gan():
     data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=64, shuffle=False, num_workers=16)
 
-    model = UNet(5, 1).cuda()
+    model = UNet(6, 2).cuda()
     #    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
     model.eval()
     # for i, img in enumerate(data_train_loader):

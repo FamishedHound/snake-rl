@@ -1,3 +1,5 @@
+import pickle
+
 import torch
 import numpy as np
 import pygame
@@ -19,9 +21,9 @@ range_of_apple_spawn = (1, 2)
 
 
 class Board(gym.Env):
-    def __init__(self, height, width):
+    def __init__(self, height, width,control):
         self.clockobject = pygame.time.Clock()
-
+        self.control = control
         pygame.init()
         self.block_size = 50
         self.height = height
@@ -51,11 +53,13 @@ class Board(gym.Env):
         #                            epsilon=0.1, save_model=False, load_model=True,
         #                            path="/DQN_trained_model/10x10_model_with_tail_new.pt",
         #                            epsilon_speed=1e-7, snake=self.snake)
-        self.reward = -0.1
+        self.reward = 0
         self.action = None
         self.speed = 9000
         self.debug = []
         self.previous_gan_action = None
+
+        self.top_score = 0
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -68,20 +72,18 @@ class Board(gym.Env):
         pygame.display.flip()
 
         self.clockobject.tick(self.speed)
-
-        self.snake.action(action)
+        if self.control=='dqn':
+            self.snake.action(action)
         self.reward = self.collision.return_reward(self.height, self.width)
         self.tick += 1
         self.games_count += 1
-        if self.reward==10:
-            print("win")
-        elif self.reward==-1:
-            print("lose")
 
+        self.lose_win_scenario()
         self.render()
         img = self.get_state()
-        return [img, self.reward, True if self.reward==-1 or self.reward==10  else False, None]
+        return [img, self.reward, True if self.reward==-1    else False, None]
     def reset(self):
+
         self.snake.reset_snake()
         self.render()
         img = self.get_state()
@@ -98,21 +100,22 @@ class Board(gym.Env):
         self.snake.draw_snake()
 
     def lose_win_scenario(self):
-        if self.reward == -1 or self.reward == 10 :
+        if self.reward == -1 or self.reward==1 :
 
             if self.reward == -1:
-                #print("Apple score {}".format(self.longest_streak))
+                if self.longest_streak > self.top_score:
+                    self.top_score = self.longest_streak
+                    print(" Current top score is {} ".format(self.top_score))
                 self.longest_streak = 0
+            if self.reward==1:
+                self.longest_streak+=1
 
-                #self.snake.reset_snake() before debugging
-            if self.reward == 10:
-                self.longest_streak += 1
-                if self.longest_streak == 110:
-                    self.epsilon = 0
 
-            self.snake.reset_snake()
-             # debugging
-            # Change me if you want random apple
+
+
+
+
+
 
     def draw_board(self):
         for y in range(self.height):
@@ -140,19 +143,25 @@ class Board(gym.Env):
                 self.running = False  # Be interpreter friendly
                 self.game_manager.save_model("9x9model")
                 pygame.quit()
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN and self.control=='human':
                 # print("hgere")
                 action = None
                 if event.key == pygame.K_RIGHT:
-                    pass
+                    self.snake.action(1)
                 if event.key == pygame.K_UP:
-                    self.speed = 9000
+                    self.snake.action(2)
 
                 if event.key == pygame.K_LEFT:
                     # print("kkk")
-                    action = 0
+                    self.snake.action(0)
                 if event.key == pygame.K_DOWN:
-                    self.speed = 1
+                    self.snake.action(3)
+                if event.key == pygame.K_DELETE:
+                    img = self.get_state()
+                    import random
+                    print("FRAME SAVED ASSHOLE")
+                    with open(f'selected_frames/frame{random.randint(0,20)}{random.randint(32,89)}.pickle', 'wb') as handle:
+                        pickle.dump(img, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 # print(action)
 
             pygame.display.update()

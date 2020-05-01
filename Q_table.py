@@ -1,6 +1,3 @@
-from State import state
-
-
 class Q_table():
     def __init__(self, apple_pos):
         self.apple_pos = apple_pos

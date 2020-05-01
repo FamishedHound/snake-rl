@@ -1,3 +1,4 @@
+import pickle
 import random
 
 from DQN.model import DQN
@@ -18,8 +19,8 @@ from GAN.reward_model import reward_model
 
 class DQN_agent():
     def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model, path, epsilon_speed , snake):
-        self.snake = snake
+                 load_model, path, epsilon_speed):
+
         self.save_model = save_model
         self.load_model = load_model
         self.epsilon_speed = epsilon_speed
@@ -57,7 +58,7 @@ class DQN_agent():
         self.gan.eval()
         self.reward_predictor.eval()
         self.temp_memory = []
-
+        self.observation_counter = 0
         self.loss_plot = []
 
     def update_Q_network(self):
@@ -107,51 +108,48 @@ class DQN_agent():
 
                 loss = mse_loss(input=loss_input, target=loss_target)
                 self.loss_plot.append(loss.item())
-                # if self.epsilon <= 0.1:
-                #                 #     print(""  "")
-                #                 #     #plt.plot(self.plot)
-                #                 #     #plt.show()
-                #                 #     print()
 
                 self.plot.append(loss.item())
                 loss.backward()
                 self.optimizer_Q_network.step()
+                self.sync_counter += 1
 
     def update_target_network(self):
         # copy current_network to target network
-        self.target_network.load_state_dict(self.Q_network.state_dict())  # nie wiem czy tak można ale warto spróbować
+        self.target_network.load_state_dict(self.Q_network.state_dict())
 
-    def make_action(self, state, reward, terminal):
+    def make_action(self, state, reward):
         self.Q_network.eval()
-
+        terminal = False
+        if reward == -1:
+            terminal = True
         with torch.no_grad():
             state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
             state = state.float().cuda()
             randy_random = random.uniform(0, 1)
-            if len(self.temp_memory) > 1:
+            if len(self.temp_memory) > 0:
 
-                state_memory,_,_ = self.temp_memory[-1]
+                state_memory, _, _ = self.temp_memory[-1]
                 state_past = torch.cat([state_memory.squeeze().unsqueeze(0), state.squeeze().unsqueeze(0)])
 
             else:
                 state_past = torch.cat([state.squeeze().unsqueeze(0), state.clone().squeeze().unsqueeze(0)])
 
-            dqn_action = self.decide_DQN_action(state_past)
-
             if randy_random > self.epsilon:
-                action=dqn_action
+                dqn_action = self.decide_DQN_action(state_past)
+                action = dqn_action
 
             else:
                 actions = [0, 1, 2, 3]
                 if self.previous_action != None:
                     forbidden_move = self.forbidden_action()
-                    if forbidden_move!=None:
+                    if forbidden_move != None:
                         actions.remove(forbidden_move)
                 action = random.choice(actions)
 
-            self.substitude_epsiilon(action)
+            self.substitute_epsilon(action)
 
-            self.update_memory(reward,action, terminal, state)
+            self.update_memory(reward, action, terminal, state)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -172,8 +170,8 @@ class DQN_agent():
 
     def decide_DQN_action(self, state_past):
         network_response = self.Q_network(state_past.unsqueeze(0))
-        forbidden_move = self.forbidden_action()
-        network_response[0][forbidden_move] = -99
+        # forbidden_move = self.forbidden_action()
+        # network_response[0][forbidden_move] = -99
         possible_actions = network_response[0]
         values, indices = possible_actions.max(dim=0)
         action = indices.item()
@@ -192,7 +190,7 @@ class DQN_agent():
             return None
         return forbidden_move
 
-    def substitude_epsiilon(self, action):
+    def substitute_epsilon(self, action):
         self.x += 1
         if self.epsilon > 0.1:  # WAS 0.1 CHANGE ME THIS IS TEST !!
             self.epsilon -= self.epsilon_speed
@@ -204,28 +202,53 @@ class DQN_agent():
 
                 torch.save(self.Q_network.state_dict(), "DQN_trained_model/10x10_model_with_tail_new.pt")
             print(self.epsilon)
-            print(action)
 
     # Update memory without GAN
-    def update_memory(self, reward, action, terminal, state):
+    def update_memory(self, reward, action, terminal, current_frame):
 
+        self.temp_memory.append((current_frame, action, reward))
         if len(self.temp_memory) == 3:
-            self.temp_memory.pop(0)
+
             first_frame, first_action, first_reward = self.temp_memory[0]
             second_frame, second_action, second_reward = self.temp_memory[1]
 
             current_state = torch.cat(
                 [first_frame.squeeze().unsqueeze(0), second_frame.squeeze().unsqueeze(0)])
-            future_state = torch.cat([second_frame.squeeze().unsqueeze(0), state.squeeze().unsqueeze(0)])
+            future_state = torch.cat([second_frame.squeeze().unsqueeze(0), current_frame.squeeze().unsqueeze(0)])
+            # plt.imshow(first_frame.squeeze().cpu())
+            # plt.show()
+            # plt.imshow(second_frame.squeeze().cpu())
+            # plt.show()
+            # plt.imshow(state.squeeze().cpu())
+            # plt.show()
 
+            # print(f" f_r{first_reward} f_a{first_action} s_r{second_reward} s_a{second_action} r{reward} a{action}")
 
             self.memory.append(
-                (current_state, self.previous_action, self.previous_reward, future_state, terminal,
+                (current_state, second_action, second_reward, future_state, terminal,
                  reward))
+            self.create_observations(current_state=current_state, future_state=future_state, reward=second_reward,
+                                     action=second_action)
+            self.temp_memory.pop(0)
+            self.observation_counter += 1
+        elif len(self.temp_memory) == 2:
 
-            self.update_Q_network()
+            first_frame, first_action, first_reward = self.temp_memory[-2]
 
-        self.temp_memory.append((state, action, reward))
+            current_state = torch.cat(
+                [first_frame.squeeze().unsqueeze(0), first_frame.squeeze().unsqueeze(0)])
+            future_state = torch.cat([first_frame.squeeze().unsqueeze(0), current_frame.squeeze().unsqueeze(0)])
+
+            self.memory.append(
+                (current_state, first_action, first_reward, future_state, terminal,
+                 reward))
+            # plt.imshow(first_frame.squeeze().cpu())
+            # plt.show()
+            # plt.imshow(state.squeeze().cpu())
+            # plt.show()
+            self.create_observations(current_state=current_state,future_state=future_state,reward=first_reward,action=first_action)
+            self.observation_counter += 1
+        self.update_Q_network()
 
     # def update_memory(self, reward, terminal, state, how_many_frames):
     #     self.gan.eval()
@@ -326,3 +349,8 @@ class DQN_agent():
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
             self.update_target_network()
+
+    def create_observations(self, current_state, future_state, reward, action):
+
+        with open(f"train_reward/now/state_s_{self.observation_counter}.pickle", 'wb') as handle:
+            pickle.dump((current_state, future_state, reward, action), handle, protocol=pickle.HIGHEST_PROTOCOL)
