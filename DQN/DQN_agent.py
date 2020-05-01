@@ -227,8 +227,9 @@ class DQN_agent():
             self.memory.append(
                 (current_state, second_action, second_reward, future_state, terminal,
                  reward))
-            self.create_observations(current_state=current_state, future_state=future_state, reward=second_reward,
-                                     action=second_action)
+
+            #self.create_observations(current_state=current_state, future_state=future_state, reward=second_reward,
+            #                         action=second_action)
             self.temp_memory.pop(0)
             self.observation_counter += 1
         elif len(self.temp_memory) == 2:

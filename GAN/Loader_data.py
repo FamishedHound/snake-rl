@@ -84,9 +84,9 @@ class RewardDataset(Dataset):
 
             (state, future, reward, action) = pickle.load(open(path, "rb"))
             state = state.cpu()
-            future= future.cpu()
-            reward=reward
-            action=action
+            future = future.cpu()
+            reward = reward
+            action = action
             action_vec = np.zeros(4)
             action_vec[action] = 1
             action = action_vec
@@ -96,11 +96,21 @@ class RewardDataset(Dataset):
             action = torch.ones_like(state).repeat(2, 1, 1) * torch.from_numpy(action) \
                 .unsqueeze(1) \
                 .unsqueeze(2)
+            np_reward = np.zeros(3)
+            # mapping of reward 0 => 1 , 1 => -1 ,  2 => -0.1
 
+            if reward == 1:
+                np_reward[0] = 1
+
+            elif reward == -1:
+                np_reward[1] = 1
+
+            else:
+                np_reward[2] = 1
             # plt.imshow(future, cmap='gray')
             # plt.show()
             current_state = torch.cat([state.cpu(), action.float()], 0)
-            return current_state, future, reward, action
+            return current_state, future, np_reward, action, state
 
 
 class RewardPathsDataset(object):
@@ -131,13 +141,15 @@ def train_reward_model():
 
     plot = []
     # for shuffle in range(5):
-    data_train = RewardDataset(RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train, transform=train_transforms)
-    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
+    data_train = RewardDataset(
+        RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train,
+        transform=train_transforms)
+    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=2)
 
     model = reward_model(6).cuda()
 
-    # model.load_state_dict(
-    #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
+    model.load_state_dict(
+        torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame.pt"))
 
     model.train()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -146,13 +158,12 @@ def train_reward_model():
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            current_state,future,reward,action  = img
+            (_, future, reward, action, current_state) = img
             optimizer.zero_grad()
+            current_state = current_state.cuda()
 
-            actual_reward = actual_reward.cuda()
-            state = state.cuda()
-            models_reward = model(state)
-            actual_reward = torch.argmax(actual_reward, dim=1)
+            models_reward = model(current_state)
+            actual_reward = torch.argmax(reward.cuda(), dim=1)
             loss_reward = CrossEntropyLoss()(models_reward, actual_reward.long())
             # if actual_reward.item()==0:
             #     plt.imshow(state.cpu().numpy().squeeze()[0],cmap='gray',vmin=0,vmax=1)
@@ -242,7 +253,7 @@ def train_gan():
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            current_state, future, reward, action = img
+            current_state, future, reward, action, _ = img
             optimizer.zero_grad()
 
             img_sharp = future.cuda()
@@ -274,14 +285,13 @@ def train_gan():
     predicted_output_img = img_deblur[0].detach().cpu().numpy().squeeze()
     actual_output = img_sharp[0].detach().cpu().numpy().squeeze()
 
-
-    plt.imshow(predicted_output_img[0],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(predicted_output_img[0], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(predicted_output_img[1],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(predicted_output_img[1], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(actual_output[0],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(actual_output[0], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(actual_output[1],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(actual_output[1], cmap='gray', vmax=1, vmin=0)
     plt.show()
     torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt")
     plt.plot(plot)
@@ -368,7 +378,7 @@ if __name__ == '__main__':
     data_path2 = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward"
     # train,val = DeblurDataset(data_path).get_paths()
 
-    #train_gan()
+    # train_gan()
     # validate_gan()
     # balance_files()
     train_reward_model()
