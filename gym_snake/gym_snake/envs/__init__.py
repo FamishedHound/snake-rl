@@ -1,1 +1,0 @@
-from gym_snake.gym_snake.envs.game_starter import Board
