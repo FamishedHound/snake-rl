@@ -81,7 +81,9 @@ class Board(gym.Env):
         self.lose_win_scenario()
         self.render()
         img = self.get_state()
-        return [img, self.reward, True if self.reward==-1    else False, None]
+        self.create_actions_channels(img,action,img,self.reward)
+        return img, self.reward, True if self.reward==-1    else False, None
+
     def reset(self):
 
         self.snake.reset_snake()
@@ -197,7 +199,7 @@ class Board(gym.Env):
 
         return img
 
-    def create_actions_channels(self, action, img, reward):
+    def create_actions_channels(self,state, action, img, reward):
 
         # plt.imshow(img,cmap='gray',vmax=1,vmin=0)
         # plt.show()
@@ -207,9 +209,8 @@ class Board(gym.Env):
         action = action_vec
         np_reward = np.zeros(3)
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
-        if reward == 10:
+        if reward == 1:
             np_reward[0] = 1
-
         elif reward == -1:
             np_reward[1] = 1
 
@@ -222,25 +223,25 @@ class Board(gym.Env):
             .unsqueeze(1) \
             .unsqueeze(2)
 
-        # state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
-        # state = torch.from_numpy(img)
+        state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
+        state = torch.from_numpy(img)
         # if self.index > 0:
         #     with open(f"train_reward/future/state_s_{self.index - 1}.pickle", 'wb') as handle:
         #
-        #         pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #         pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
         # with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
-        #     pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #     pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # if self.index % 2 == 0:
-        #     # if reward == 10:
-        #     #     plt.imshow(self.past, cmap='gray', vmax=1, vmin=0)
-        #     #     plt.show()
-        #     #     plt.imshow(state, cmap='gray', vmax=1, vmin=0)
-        #     #     plt.show()
-        #     #     print()
-        #     with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
-        #         pickle.dump((self.past, state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-        # self.past = state
+        if self.index % 2 == 0:
+            # if reward == 10:
+            #     plt.imshow(self.past, cmap='gray', vmax=1, vmin=0)
+            #     plt.show()
+            #     plt.imshow(state, cmap='gray', vmax=1, vmin=0)
+            #     plt.show()
+            #     print()
+            with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
+                pickle.dump((self.past, state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.past = state_action
         # # GAN
         # if self.index > 0:
         #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
@@ -256,5 +257,8 @@ class Board(gym.Env):
         self.previous_gan_action = action
         self.index += 1
 
-
-
+    def create_observations(self, current_state, future_state, reward, action):
+        print("hello")
+        with open(f"train_reward/now/state_s_{self.index}.pickle", 'wb') as handle:
+            pickle.dump((current_state, future_state, reward, action), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.index += 1

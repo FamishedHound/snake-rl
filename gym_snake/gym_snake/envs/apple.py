@@ -19,6 +19,7 @@ class apple():
             self.y = random.randint(0, self.width-1)
 
         #debug
+
         self.apple_position = (self.x, self.y)
 
 

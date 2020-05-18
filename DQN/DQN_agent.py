@@ -15,6 +15,7 @@ from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from GAN.model import UNet
 from GAN.reward_model import reward_model
+from tree.Node import Node, Master
 
 
 class DQN_agent():
@@ -49,17 +50,20 @@ class DQN_agent():
         self.plot = []
 
         self.gan = UNet(5, 1)
-        self.reward_predictor = reward_model(5)
+        self.reward_predictor = reward_model(6)
         self.gan = self.gan.cuda()
         self.reward_predictor = self.reward_predictor.cuda()
         self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
         self.reward_predictor.load_state_dict(
-            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
+            torch.load(
+                "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame_new.pt"))
         self.gan.eval()
         self.reward_predictor.eval()
         self.temp_memory = []
         self.observation_counter = 0
         self.loss_plot = []
+        self.running = False
+        self.action_to_victory = []
 
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
@@ -120,10 +124,13 @@ class DQN_agent():
 
     def make_action(self, state, reward):
         self.Q_network.eval()
+        # plt.imshow(state.squeeze())
+        # plt.show()
         terminal = False
         if reward == -1:
             terminal = True
         with torch.no_grad():
+
             state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
             state = state.float().cuda()
             randy_random = random.uniform(0, 1)
@@ -139,10 +146,19 @@ class DQN_agent():
                 dqn_action = self.decide_DQN_action(state_past)
                 action = dqn_action
 
+
+                #action = self.action_to_victory = self.tree_search(state)
+
+
+
+
+
+
             else:
                 actions = [0, 1, 2, 3]
+                # removed so the reward predictor can learn failing with a tail
                 if self.previous_action != None:
-                    forbidden_move = self.forbidden_action()
+                    forbidden_move = self.forbidden_action(self.previous_action)
                     if forbidden_move != None:
                         actions.remove(forbidden_move)
                 action = random.choice(actions)
@@ -150,6 +166,7 @@ class DQN_agent():
             self.substitute_epsilon(action)
 
             self.update_memory(reward, action, terminal, state)
+            #self.tree_search(state)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -167,6 +184,8 @@ class DQN_agent():
         self.previous_state = None
         self.previous_reward = None
         self.temp_memory = []
+        self.action_to_victory = []
+        self.running = False
 
     def decide_DQN_action(self, state_past):
         network_response = self.Q_network(state_past.unsqueeze(0))
@@ -177,14 +196,14 @@ class DQN_agent():
         action = indices.item()
         return action
 
-    def forbidden_action(self):
-        if self.previous_action == 0:
+    def forbidden_action(self, past_action):
+        if past_action == 0:
             forbidden_move = 1
-        elif self.previous_action == 1:
+        elif past_action == 1:
             forbidden_move = 0
-        elif self.previous_action == 2:
+        elif past_action == 2:
             forbidden_move = 3
-        elif self.previous_action == 3:
+        elif past_action == 3:
             forbidden_move = 2
         else:
             return None
@@ -203,7 +222,8 @@ class DQN_agent():
                 torch.save(self.Q_network.state_dict(), "DQN_trained_model/10x10_model_with_tail_new.pt")
             print(self.epsilon)
 
-    # Update memory without GAN
+        self.update_Q_network()
+
     def update_memory(self, reward, action, terminal, current_frame):
 
         self.temp_memory.append((current_frame, action, reward))
@@ -227,8 +247,7 @@ class DQN_agent():
             self.memory.append(
                 (current_state, second_action, second_reward, future_state, terminal,
                  reward))
-            self.create_observations(current_state=current_state, future_state=future_state, reward=second_reward,
-                                     action=second_action)
+
             self.temp_memory.pop(0)
             self.observation_counter += 1
         elif len(self.temp_memory) == 2:
@@ -246,78 +265,101 @@ class DQN_agent():
             # plt.show()
             # plt.imshow(state.squeeze().cpu())
             # plt.show()
-            self.create_observations(current_state=current_state,future_state=future_state,reward=first_reward,action=first_action)
+
             self.observation_counter += 1
         self.update_Q_network()
 
-    # def update_memory(self, reward, terminal, state, how_many_frames):
-    #     self.gan.eval()
-    #     counter = 0
-    #     buffer_memory = []
-    #     current_states_to_generate = [state]
-    #     while len(buffer_memory) < how_many_frames:
-    #         temp = []
-    #         for states in current_states_to_generate:
-    #             for action_number in range(4):
-    #                 result = self.recursive_memory_creation(states, action_number, buffer_memory)
-    #
-    #                 temp.append(result)
-    #
-    #         current_states_to_generate = temp
-    #     [self.memory.append(x) for x in buffer_memory]
-    #     self.update_Q_network()
+    def tree_search(self, frame):
+        self.gan.eval()
+        self.reward_predictor.eval()
+        master = Master(frame.squeeze(0), self.previous_action)
 
-    def recursive_memory_creation(self, state, which_action, buffer_memory):
+        root = [master]
+        all_nodes = [master]
+        self.running = True
+        winner_node = None
+        while self.running:
+            temp = []
+            for states in root:
+                found = False
+                for action_number in range(4):
+                    # if torch.equal(master.img.cpu(), states.img.cpu()):
+                    #     if self.forbidden_action(master.action) == action_number:
+                    #         continue
+                    if self.forbidden_action(states.action) == action_number:
+                        continue
+                    present, future, is_done = self.generate_future(action=action_number, state=states.img)
+                    result = Node(parent=states.img, action=action_number, img=future)
+
+                    if present != None:
+                        all_nodes.append(result)
+                        temp.append(result)
+
+                    if is_done:
+                        winner_node = result
+                        found = True
+                        break
+                if found:
+                    self.running = False
+                    break
+
+            root = temp
+        #print(self.back_propagate_tree(all_nodes, winner_node, master.img))
+        return self.back_propagate_tree(all_nodes, winner_node, master.img)
+
+    def back_propagate_tree(self, all_nodes: list, winner_node, master):
+        path = []
+        current_parent = winner_node.parent
+        while current_parent != None:
+            try:
+                action, parent = self.look_for_parent(all_nodes, current_parent, master, winner_node)
+                path.append(action)
+                current_parent = parent
+            except Exception as e:
+                break
+        if len(path)==1:
+            return path[0]
+        else:
+            return path[::-1][1]
+
+
+    def look_for_parent(self, all_nodes, suspect, master_img, winner_node):
+        for node in all_nodes:
+
+            if torch.equal(master_img.cpu(), suspect.cpu()):
+                return winner_node.action, None
+            if torch.equal(node.img.cpu(), suspect.cpu()):
+                return node.action, node.parent
+
+    def generate_future(self, action, state):
+        self.gan.eval()
+        self.reward_predictor.eval()
         with torch.no_grad():
-            if state != None:
-                action_vec = np.zeros(4)
-                action_vec[which_action] = 1
-                action_input = action_vec
-                action_output = torch.ones_like(torch.from_numpy(state.cpu().numpy().squeeze())).repeat(4, 1,
-                                                                                                        1) * torch.from_numpy(
-                    action_input) \
-                                    .unsqueeze(1) \
-                                    .unsqueeze(2)
-                state_action = torch.cat(
-                    [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()],
-                    dim=0)
-                future_state = self.gan(state_action.unsqueeze(0).cuda())
-                now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
-                now_future = now_future.cuda()
+            action_vec = np.zeros(4)
+            action_vec[action] = 1
+            action = action_vec
 
-                future_state_action = torch.cat(
-                    [torch.from_numpy(future_state.cpu().numpy().squeeze()).unsqueeze(0).cuda(),
-                     action_output.float().cuda()], dim=0)
-                future_future_state = self.gan(future_state_action.unsqueeze(0).cuda())
-                future_future_reward = torch.cat(
-                    [future_state.squeeze().unsqueeze(0), future_future_state.squeeze().unsqueeze(0)], 0)
+            action = torch.ones_like(state.squeeze().cuda()).repeat(4, 1, 1) * torch.from_numpy(action).cuda() \
+                .unsqueeze(1) \
+                .unsqueeze(2)
 
-                reward = self.reward_predictor(now_future.unsqueeze(0))
-                reward = self.determine_reward(reward)
+            state_action = torch.cat([state, action.float()])
+            future_state = self.gan(state_action.unsqueeze(0))
+            future_state = future_state.squeeze(0)
+            # plt.imshow(state.cpu().squeeze())
+            # plt.show()
+            #
+            #
+            # plt.imshow(future_state.cpu().squeeze())
+            # plt.show()
 
-                terminal_reward = self.reward_predictor(future_future_reward.unsqueeze(0))
-                terminal_reward = self.determine_reward(terminal_reward)
-                if terminal_reward == 10:
-                    print(terminal_reward)
-                    plt.imshow(state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
-                    plt.show()
-                    plt.imshow(future_state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
-                    plt.show()
-                    plt.imshow(future_future_state.cpu().numpy().squeeze(), cmap='gray', vmin=0, vmax=1)
-                    plt.show()
-                    exit(1)
-                terminal = False
+            two_frame = torch.cat([state, future_state])
+            reward = self.determine_reward(self.reward_predictor(two_frame.unsqueeze(0)))
+            # print(reward)
+            if reward == -1:
+                return None, future_state.cuda(), True if reward == 1 else False
 
-                if terminal_reward == -1:
-                    terminal = True
-
-                elif terminal_reward == 10:
-                    terminal = True
-
-                if reward != 10 and terminal_reward != 10:
-                    buffer_memory.append((state, which_action, reward, future_state, terminal, terminal_reward))
-
-                return future_state
+            return state, future_state.cuda(), True if reward == 1 else False
             # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
             # plt.show()
 
@@ -328,7 +370,7 @@ class DQN_agent():
     def determine_reward(self, reward):
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
 
-        rewards = [10, -1, -0.1]
+        rewards = [1, -1, 0]
         reward_in = torch.argmax(reward).item()
 
         return rewards[reward_in]
@@ -349,8 +391,3 @@ class DQN_agent():
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
             self.update_target_network()
-
-    def create_observations(self, current_state, future_state, reward, action):
-
-        with open(f"train_reward/now/state_s_{self.observation_counter}.pickle", 'wb') as handle:
-            pickle.dump((current_state, future_state, reward, action), handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -17,10 +17,11 @@ import torch
 import matplotlib.pyplot as plt
 from GAN.model import UNet
 from torch.utils.data import DataLoader
-
+from GAN.discriminator import DiscriminatorSmall
 from GAN.reward_model import reward_model
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+Counter = 0
 
 
 class ImageDataset(Dataset):
@@ -73,6 +74,7 @@ class RewardDataset(Dataset):
         self.dataset = dataset
         self.transform = transform
         self.val = val
+        self.counter = 0
 
     def __len__(self):
         return len(self.dataset)
@@ -82,25 +84,17 @@ class RewardDataset(Dataset):
             path = self.dataset[
                 index]
 
-            (state, future, reward, action) = pickle.load(open(path, "rb"))
-            state = state.cpu()
-            future= future.cpu()
-            reward=reward
-            action=action
-            action_vec = np.zeros(4)
-            action_vec[action] = 1
-            action = action_vec
+            (past, state, np_reward) = pickle.load(open(path, "rb"))
 
-            # plt.imshow(state, cmap='gray')
-            # plt.show()
-            action = torch.ones_like(state).repeat(2, 1, 1) * torch.from_numpy(action) \
-                .unsqueeze(1) \
-                .unsqueeze(2)
-
-            # plt.imshow(future, cmap='gray')
-            # plt.show()
-            current_state = torch.cat([state.cpu(), action.float()], 0)
-            return current_state, future, reward, action
+            past_state = torch.cat([past.unsqueeze(0), state.unsqueeze(0)])
+            # action_vec = np.zeros(4)
+            # action_vec[action] = 1
+            # action = action_vec
+            # action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action) \
+            #     .unsqueeze(1) \
+            #     .unsqueeze(2)
+            # past_with_action =
+            return past,state, np_reward
 
 
 class RewardPathsDataset(object):
@@ -113,7 +107,8 @@ class RewardPathsDataset(object):
 
         for folder in os.listdir(osp.join(self.data_path)):
             for fname in os.listdir(self.data_path + "\\" + folder):
-                self.data_train.append(osp.join(self.data_path, folder, fname))
+                if folder == "now":
+                    self.data_train.append(osp.join(self.data_path, folder, fname))
 
         return self
 
@@ -131,26 +126,29 @@ def train_reward_model():
 
     plot = []
     # for shuffle in range(5):
-    data_train = RewardDataset(RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train, transform=train_transforms)
+    data_train = RewardDataset(
+        RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train,
+        transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
 
     model = reward_model(6).cuda()
 
     # model.load_state_dict(
-    #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future.pt"))
+    #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame.pt"))
 
     model.train()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
-    for epoch in range(10):
+    for epoch in range(21):
 
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            current_state,future,reward,action  = img
+            state, reward = img
+            reward = reward.float()
             optimizer.zero_grad()
 
-            actual_reward = actual_reward.cuda()
-            state = state.cuda()
+            actual_reward = reward.cuda()
+            state = state.float().cuda()
             models_reward = model(state)
             actual_reward = torch.argmax(actual_reward, dim=1)
             loss_reward = CrossEntropyLoss()(models_reward, actual_reward.long())
@@ -169,11 +167,14 @@ def train_reward_model():
             print("predicted reward {} actual reward {}".format(torch.argmax(models_reward[0]).item(),
                                                                 actual_reward[0].item()))
             print(f"loss image {running_loss / (i + 1)}")
-
             optimizer.step()
+        if epoch % 5 == 0:
+            torch.save(model.state_dict(),
+                       "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame_new.pt")
+
     # print("finished shuffle {} ".format(shuffle))
     torch.save(model.state_dict(),
-               "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame.pt")
+               "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame_new.pt")
     plt.plot(plot)
     plt.show()
 
@@ -231,9 +232,13 @@ def train_gan():
         transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=2)
     model = UNet(6, 2).cuda()
-    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt"))
+
+    # model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt"))
+    discriminator = DiscriminatorSmall(1).cuda()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
-    optimizer_reward = Adam(model.parameters(), lr=0.0005)
+    optimizer_discrimnator = SGD(discriminator.parameters(), lr=0.01, momentum=0.9)
+
+    gan_loss = torch.nn.BCELoss().cuda()
     plot = []
     plot_reward = []
 
@@ -244,29 +249,41 @@ def train_gan():
         for i, img in enumerate(data_train_loader):
             current_state, future, reward, action = img
             optimizer.zero_grad()
-
+            #Generator
             img_sharp = future.cuda()
             img_blur = current_state.cuda()
             img_deblur = model(img_blur)
 
             # loss_reward = BCEWithLogitsLoss()(reward , reward_actual)
-            loss = mse_loss(target=img_deblur, input=img_sharp)
+            loss_mse = mse_loss(target=img_deblur, input=img_sharp)
+            loss_gan = gan_loss(img_deblur, torch.ones_like(img_deblur))
+            running_loss += loss_mse.item()
 
-            running_loss += loss.item()
+            plot.append(loss_mse.item())
+            loss_gan_mse = loss_gan+loss_mse
+            loss_gan_mse.backward()
+            optimizer.step()
+            #Discriminator
+            optimizer_discrimnator.zero_grad()
+            disc_true = discriminator(img_sharp)
+            disc_fake = discriminator(img_deblur)
+            disc_true_loss =gan_loss(disc_true, torch.zeros_like(disc_true))
+            disc_fake_loss =gan_loss(disc_fake, torch.zeros_like(disc_fake))
 
-            plot.append(loss.item())
-
-            loss.backward()
+            discriminator_loss = disc_true_loss+disc_fake_loss
+            discriminator_loss.backward()
+            optimizer_discrimnator.step()
 
             print(f"loss image {running_loss / (i + 1)}")
 
-            optimizer.step()
+
             # if i == len(data_train_loader)-1:
             #     last_deblurs = img_deblur
         # plt.plot(plot)
         # plt.show()
         if epoch % 5 == 0:
-            torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt")
+            torch.save(model.state_dict(),
+                       "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame_with_discriminator.pt")
     plt.plot(plot_reward)
     plt.show()
     print(f"finished epoch {epoch}")
@@ -274,16 +291,15 @@ def train_gan():
     predicted_output_img = img_deblur[0].detach().cpu().numpy().squeeze()
     actual_output = img_sharp[0].detach().cpu().numpy().squeeze()
 
-
-    plt.imshow(predicted_output_img[0],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(predicted_output_img[0], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(predicted_output_img[1],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(predicted_output_img[1], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(actual_output[0],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(actual_output[0], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    plt.imshow(actual_output[1],cmap='gray',vmax=1,vmin=0)
+    plt.imshow(actual_output[1], cmap='gray', vmax=1, vmin=0)
     plt.show()
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt")
+    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame_with_discriminator.pt")
     plt.plot(plot)
     plt.show()
 
@@ -368,8 +384,8 @@ if __name__ == '__main__':
     data_path2 = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward"
     # train,val = DeblurDataset(data_path).get_paths()
 
-    #train_gan()
+    train_gan()
     # validate_gan()
     # balance_files()
-    train_reward_model()
+    #train_reward_model()
     # get_accuracy_reward_predictor()
