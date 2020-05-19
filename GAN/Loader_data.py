@@ -86,7 +86,7 @@ class RewardDataset(Dataset):
 
             (past, state, np_reward) = pickle.load(open(path, "rb"))
 
-            past_state = torch.cat([past.unsqueeze(0), state.unsqueeze(0)])
+
             # action_vec = np.zeros(4)
             # action_vec[action] = 1
             # action = action_vec
@@ -94,7 +94,7 @@ class RewardDataset(Dataset):
             #     .unsqueeze(1) \
             #     .unsqueeze(2)
             # past_with_action =
-            return past,state, np_reward
+            return past,state.unsqueeze(0), np_reward
 
 
 class RewardPathsDataset(object):
@@ -231,14 +231,16 @@ def train_gan():
         RewardPathsDataset("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward").get_paths().data_train,
         transform=train_transforms)
     data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=2)
-    model = UNet(6, 2).cuda()
+    model = UNet(5, 1).cuda()
 
     # model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame.pt"))
     discriminator = DiscriminatorSmall(1).cuda()
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer_discrimnator = SGD(discriminator.parameters(), lr=0.01, momentum=0.9)
-
+    discriminator = discriminator.double()
+    model = model.double()
     gan_loss = torch.nn.BCELoss().cuda()
+    gan_loss = gan_loss.double()
     plot = []
     plot_reward = []
 
@@ -247,21 +249,27 @@ def train_gan():
         running_loss = 0.0
 
         for i, img in enumerate(data_train_loader):
-            current_state, future, reward, action = img
+            current_state, future, reward = img
             optimizer.zero_grad()
             #Generator
             img_sharp = future.cuda()
             img_blur = current_state.cuda()
-            img_deblur = model(img_blur)
+            img_deblur = model(img_blur.double())
 
             # loss_reward = BCEWithLogitsLoss()(reward , reward_actual)
-            loss_mse = mse_loss(target=img_deblur, input=img_sharp)
-            loss_gan = gan_loss(img_deblur, torch.ones_like(img_deblur))
-            running_loss += loss_mse.item()
+            loss_mse = mse_loss(target=img_sharp, input=img_deblur.float())
+            generator = discriminator(img_deblur.double())
 
+            loss_gan = gan_loss(generator, torch.ones_like(generator))
+
+            running_loss += loss_mse.item()
             plot.append(loss_mse.item())
+
             loss_gan_mse = loss_gan+loss_mse
+            loss_gan_mse = loss_gan_mse.cuda().double()
+
             loss_gan_mse.backward()
+
             optimizer.step()
             #Discriminator
             optimizer_discrimnator.zero_grad()
