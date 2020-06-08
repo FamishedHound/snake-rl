@@ -35,7 +35,7 @@ class DQN_agent():
 
         self.discount_factor = discount_factor
         self.target_network.load_state_dict(self.Q_network.state_dict())
-        self.memory = replay_memory(10000)
+        self.memory = replay_memory(50000)
         self.epochs = 20
 
         self.frames = frames
@@ -53,7 +53,7 @@ class DQN_agent():
         self.reward_predictor = reward_model(6)
         self.gan = self.gan.cuda()
         self.reward_predictor = self.reward_predictor.cuda()
-        self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
+        self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1_2frame_with_discriminator.pt"))
         self.reward_predictor.load_state_dict(
             torch.load(
                 "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor_future_2frame_new.pt"))
@@ -127,7 +127,8 @@ class DQN_agent():
         # plt.imshow(state.squeeze())
         # plt.show()
         terminal = False
-        if reward == -1:
+        #1 framee change
+        if reward == -1 or terminal==1:
             terminal = True
         with torch.no_grad():
 
@@ -143,16 +144,13 @@ class DQN_agent():
                 state_past = torch.cat([state.squeeze().unsqueeze(0), state.clone().squeeze().unsqueeze(0)])
 
             if randy_random > self.epsilon:
-                dqn_action = self.decide_DQN_action(state_past)
+                #1 frame change before I used state_past
+                dqn_action = self.decide_DQN_action(state)
                 action = dqn_action
+                #1 frame change
 
 
-                #action = self.action_to_victory = self.tree_search(state)
-
-
-
-
-
+                #action  = self.tree_search(state)
 
             else:
                 actions = [0, 1, 2, 3]
@@ -162,11 +160,12 @@ class DQN_agent():
                     if forbidden_move != None:
                         actions.remove(forbidden_move)
                 action = random.choice(actions)
-
+            if self.previous_action != None:
+                self.update_memory_one_frame(state, reward, terminal)
             self.substitute_epsilon(action)
 
-            self.update_memory(reward, action, terminal, state)
-            #self.tree_search(state)
+            #self.update_memory(reward, action, terminal, state)
+
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -188,7 +187,8 @@ class DQN_agent():
         self.running = False
 
     def decide_DQN_action(self, state_past):
-        network_response = self.Q_network(state_past.unsqueeze(0))
+        #1 frame change
+        network_response = self.Q_network(state_past)
         # forbidden_move = self.forbidden_action()
         # network_response[0][forbidden_move] = -99
         possible_actions = network_response[0]
@@ -223,7 +223,11 @@ class DQN_agent():
             print(self.epsilon)
 
         self.update_Q_network()
-
+    def update_memory_one_frame(self,state,reward,terminal):
+        self.memory.append(
+            (self.previous_action, self.previous_action, self.previous_reward, state, terminal,
+             reward))
+        self.update_Q_network()
     def update_memory(self, reward, action, terminal, current_frame):
 
         self.temp_memory.append((current_frame, action, reward))
@@ -292,6 +296,7 @@ class DQN_agent():
                     result = Node(parent=states.img, action=action_number, img=future)
 
                     if present != None:
+
                         all_nodes.append(result)
                         temp.append(result)
 
@@ -346,11 +351,11 @@ class DQN_agent():
             state_action = torch.cat([state, action.float()])
             future_state = self.gan(state_action.unsqueeze(0))
             future_state = future_state.squeeze(0)
-            # plt.imshow(state.cpu().squeeze())
+            # plt.imshow(state.cpu().squeeze(),cmap='gray',vmax=1,vmin=0)
             # plt.show()
             #
             #
-            # plt.imshow(future_state.cpu().squeeze())
+            # plt.imshow(future_state.cpu().squeeze(),cmap='gray',vmax=1,vmin=0)
             # plt.show()
 
             two_frame = torch.cat([state, future_state])
@@ -359,7 +364,7 @@ class DQN_agent():
             if reward == -1:
                 return None, future_state.cuda(), True if reward == 1 else False
 
-            return state, future_state.cuda(), True if reward == 1 else False
+            return state, future_state.cuda(), True if reward == 1  else False
             # plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
             # plt.show()
 
@@ -389,5 +394,5 @@ class DQN_agent():
             print(f"a{which_action}, r{reward}, is_t{terminal_reward} , t_r{terminal_reward}")
 
     def sync_networks(self):
-        if self.sync_counter % 10 == 0:
+        if self.sync_counter % 5 == 0:
             self.update_target_network()

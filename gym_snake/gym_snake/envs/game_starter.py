@@ -13,6 +13,7 @@ import skimage as skimage
 from skimage import color
 import cv2
 import gym
+import matplotlib.pyplot as plt
 snake_starting_pos = (1, 3)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
@@ -71,6 +72,7 @@ class Board(gym.Env):
     def step(self, action):
         pygame.display.flip()
 
+
         self.clockobject.tick(self.speed)
         if self.control=='dqn':
             self.snake.action(action)
@@ -81,7 +83,8 @@ class Board(gym.Env):
         self.lose_win_scenario()
         self.render()
         img = self.get_state()
-        self.create_actions_channels(img,action,img,self.reward)
+        self.create_actions_channels(img, action, img, self.reward)
+        #1frame change
         return img, self.reward, True if self.reward==-1    else False, None
 
     def reset(self):
@@ -203,11 +206,12 @@ class Board(gym.Env):
 
         # plt.imshow(img,cmap='gray',vmax=1,vmin=0)
         # plt.show()
-
+        # print(action)
         action_vec = np.zeros(4)
         action_vec[action] = 1
         action = action_vec
         np_reward = np.zeros(3)
+
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
         if reward == 1:
             np_reward[0] = 1
@@ -225,22 +229,24 @@ class Board(gym.Env):
 
         state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
         state = torch.from_numpy(img)
-        # if self.index > 0:
-        #     with open(f"train_reward/future/state_s_{self.index - 1}.pickle", 'wb') as handle:
-        #
-        #         pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-        # with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
-        #     pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if self.index > 0:
+            with open(f"train_reward/future/state_s_{self.index - 1}.pickle", 'wb') as handle:
 
-        if self.index % 2 == 0:
-            # if reward == 10:
-            #     plt.imshow(self.past, cmap='gray', vmax=1, vmin=0)
-            #     plt.show()
-            #     plt.imshow(state, cmap='gray', vmax=1, vmin=0)
-            #     plt.show()
-            #     print()
-            with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
-                pickle.dump((self.past, state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump((state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(f'train_reward/new/state_s_{self.index}.pickle', 'wb') as handle:
+            pickle.dump(state_action, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # plt.imshow(state)
+        # plt.show()
+        # print()
+        # if self.index % 2 == 0:
+        #     # if reward == 10:
+        #     #     plt.imshow(self.past, cmap='gray', vmax=1, vmin=0)
+        #     #     plt.show()
+        #     #     plt.imshow(state, cmap='gray', vmax=1, vmin=0)
+        #     #     plt.show()
+        #     #     print()
+        #     with open(f'train_reward/now/state_s_{self.index}.pickle', 'wb') as handle:
+        #         pickle.dump((self.past, state, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
         self.past = state_action
         # # GAN
         # if self.index > 0:
