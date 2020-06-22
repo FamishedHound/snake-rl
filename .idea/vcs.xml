@@ -2,6 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/WorldModelsExperiments" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/WorldModelsExperiments/carracing/SnakeFusion" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/keras-rl" vcs="Git" />
   </component>
 </project>

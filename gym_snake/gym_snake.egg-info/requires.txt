@@ -1,0 +1,7 @@
+gym
+torch
+numpy
+pandas
+pickle
+random
+pygame

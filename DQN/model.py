@@ -9,9 +9,7 @@ class DQN(nn.Module):
     def __init__(self, action_no, how_many_frames):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(how_many_frames, 32, 8, stride=4)
-
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
-
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
 
         self.tick = 0
