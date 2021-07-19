@@ -4,6 +4,11 @@ output/
 /WorldModelsExperiments
 /train/S'_images
 /train/S_images
-train
+train/
 validate_gan/
 train_reward/
+GAN_models/
+new_models/
+saved_models/
+DQN_trained_model/
+video_prediction/

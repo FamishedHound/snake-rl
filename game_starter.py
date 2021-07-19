@@ -6,7 +6,6 @@ import numpy as np
 import pygame
 import matplotlib.pyplot as plt
 from DQN.DQN_agent import DQN_agent
-from Function_approx.approximator import f_approximation
 from apple import apple
 from collision_handler import collision
 from games_manager import games_manager
@@ -35,7 +34,7 @@ range_of_apple_spawn = (1, 2)
 class Board():
     def __init__(self, height, width):
         self.clockobject = pygame.time.Clock()
-
+        self.was_apple_last = False
         pygame.init()
         self.block_size = 50
         self.height = height
@@ -47,7 +46,7 @@ class Board():
         self.running = True
         self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn, self.snake)
 
-        self.index = 0
+        self.index = 77000
         self.index_helper = 0
         self.collision = collision(self.apple, self.snake)
         self.apple.spawn_apple()
@@ -59,8 +58,8 @@ class Board():
         self.decide_epsilon_greedy()
         self.games_count = 0
         self.longest_streak = 0
-        self.f_approx = f_approximation(self.epsilon)
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=32,
+
+        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=8,
                                    epsilon=1, save_model=False, load_model=True,
                                    path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
                                    epsilon_speed=1e-4)
@@ -69,6 +68,9 @@ class Board():
         self.speed = 9000
         self.debug = []
         self.previous_gan_action = None
+        self.temporal_frame_list = []
+        self.past_action = None
+        self.apple_movement_flag = False
 
     def decide_epsilon_greedy(self):
         if load_tables_from_file[0]:
@@ -81,28 +83,56 @@ class Board():
         while self.running:
             pygame.display.flip()
             reward = self.collision.return_reward(self.height, self.width)
-            self.clockobject.tick(9000)
-
+            self.clockobject.tick(self.speed)
+            if reward == -1:
+                self.apple_movement_flag = False
             self.draw_sprites()
-
+            print(reward)
             self.process_input()
-            self.snake.move_segmentation()
+
             self.snake.draw_segment()
+            self.apple.draw_apple()
             img = self.get_state()
 
-
+            # plt.imshow(img, cmap='gray', vmin=0, vmax=1)
+            # plt.show()
             action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == -1 or reward==10 else False)  # was if reward == 10 or
-            self.create_actions_channels(action, img, reward)
-            self.snake.action(action)
+                                                True if reward == -1 or reward == 10 else False)
+            # self.snake.action(action)
+            # for moving apple
+            if self.apple_movement_flag == False:
 
+                 # was if reward == 10 or
+
+                if reward != 10:
+                    self.snake.action(action)
+                if reward == 10:
+                    self.apple_movement_flag = True
+                    action = None
+                    self.past_action = action
+                    self.new_pos_x, self.new_pos_y = self.apple.spawn_apple()
+
+            # self.snake.action(action)
             self.tick += 1
             self.lose_win_scenario(reward)
             self.games_count += 1
 
+            if self.apple_movement_flag == False:
+                self.snake.move_segmentation()
+            # for moving apple
+            if self.apple_movement_flag:
+                action = None
+                if self.apple.x == self.new_pos_x and self.apple.y == self.new_pos_y:
+                    self.apple_movement_flag = False
+
+                else:
+                    self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
+                                          target_pos=(self.new_pos_x, self.new_pos_y))
+            self.create_actions_channels(action, img, reward)
+
     def draw_sprites(self):
         self.draw_board()
-        self.apple.draw_apple()
+
         self.snake.draw_snake()
 
     def lose_win_scenario(self, reward):
@@ -120,7 +150,6 @@ class Board():
             # print(reward)
 
             # Change me if you want random apple
-
 
     def draw_board(self):
         for y in range(self.height):
@@ -181,7 +210,7 @@ class Board():
         # plt.imshow(img.astype(np.uint8))
         # plt.show()
         # print(img.shape)
-        #img = ndimage.rotate(img, 270, reshape=False)
+        # img = ndimage.rotate(img, 270, reshape=False)
         # if self.index > 0:
         #     plt.imshow(img)
         #     plt.savefig(f"S'_images/{self.index-1}.png")
@@ -200,10 +229,14 @@ class Board():
 
         # plt.imshow(img,cmap='gray',vmax=1,vmin=0)
         # plt.show()
+        if action == None:
+            action = np.zeros(4)
+            self.was_apple_last = True
+        else:
+            action_vec = np.zeros(4)
+            action_vec[action] = 1
+            action = action_vec
 
-        action_vec = np.zeros(4)
-        action_vec[action] = 1
-        action = action_vec
         np_reward = np.zeros(3)
         # mapping of reward 0 => 10 , 1 => -1 ,  2 => -0.1
         if reward == 10:
@@ -216,12 +249,15 @@ class Board():
             np_reward[2] = 1
 
         np_reward = torch.from_numpy(np_reward)
-        #print("reward {} vector {}".format(reward, np_reward))
+
+        # print("reward {} vector {}".format(reward, np_reward))
+        action2 = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * 0
         action = torch.ones_like(torch.from_numpy(img)).repeat(4, 1, 1) * torch.from_numpy(action) \
             .unsqueeze(1) \
             .unsqueeze(2)
-
+        # noise = torch.randn(1, 84, 84)
         state_action = torch.cat([torch.from_numpy(img).unsqueeze(0), action], dim=0)
+        # state_action = torch.cat([noise.double(), action], dim=0)
         # state = torch.from_numpy(img)
         # if self.index > 0:
         #     with open(f"train_reward/future/state_s_{self.index - 1}.pickle", 'wb') as handle:
@@ -232,21 +268,34 @@ class Board():
         #
         #
         # # GAN
-        # if self.index > 0:
-        #     with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
-        #         future_state = torch.from_numpy(img).unsqueeze(0)
-        #         pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if self.index > 0:
+            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+                future_state = torch.from_numpy(img).unsqueeze(0)
+                pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+            pickle.dump((state_action, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # RNN
+        # if len(self.temporal_frame_list)==5:
+        #     # #debug
+        #     # for img in self.temporal_frame_list:
+        #     #     plt.imshow(img.squeeze())
+        #     #     plt.show()
         #
-        # with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
-        #     pickle.dump((state_action,np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-
+        #     with open(f'train/video/state_s_{self.index}.pickle', 'wb') as handle:
+        #         video = np.swapaxes(torch.stack(self.temporal_frame_list[:4]),0,1)
+        #         ground_truth = self.temporal_frame_list[4]
+        #         pickle.dump((video,ground_truth), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.index += 1
+        #
+        #     self.temporal_frame_list.pop(0)
+        # self.temporal_frame_list.append(torch.from_numpy(img).unsqueeze(0))
+        # RNN end
         # generate validation images
         # with open(f'validate_gan/state_s_{self.index}.pickle', 'wb') as handle:
         #  pickle.dump((state_action,reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
         self.previous_gan_action = action
-        self.index += 1
 
 
 snake = Board(4, 4)

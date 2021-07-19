@@ -24,7 +24,7 @@ class Snake():
         x, y = self.snake_head
         rect = pygame.Rect(x * self.block_size, y * self.block_size, self.block_size, self.block_size)
         # print(" {} screen".format(self.screen))
-        pygame.draw.rect(self.screen.get_surface(), (100, 100, 20), rect)
+        pygame.draw.rect(self.screen.get_surface(), (64, 64, 64), rect)
     def draw_segment(self):
         for segment in self.segments:
             rect = pygame.Rect(segment.x * self.block_size, segment.y * self.block_size, self.block_size,
@@ -71,7 +71,7 @@ class Snake():
                 segment.pasty = segment.y
                 segment.x = self.past_x
                 segment.y = self.past_y
-                segment.direction = self.dir
+
             if i >0:
                 segment.pastx = segment.x
                 segment.pasty = segment.y

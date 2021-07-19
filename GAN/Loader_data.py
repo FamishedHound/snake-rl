@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import torchvision
 from PIL.ImageFile import ImageFile
 from torch.nn import BCELoss, CrossEntropyLoss, BCEWithLogitsLoss
 from torch.nn.functional import mse_loss
@@ -13,10 +14,15 @@ from torchvision.transforms import functional as TF
 from torchvision import transforms
 import torch
 import matplotlib.pyplot as plt
+import traceback
+
+from GAN import discriminator
+# from GAN.discriminator import DiscriminatorSmall
 from GAN.model import UNet
 from torch.utils.data import DataLoader
 
 from GAN.reward_model import reward_model
+from GAN.testing_architectures import GeneratorSmall, DiscriminatorSmall
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -29,22 +35,28 @@ class ImageDataset(Dataset):
         self.val = val
 
     def __len__(self):
-        return len(self.dataset)
+        return 140000
+
 
     def __getitem__(self, index):
-        if not self.val:
-            path = self.dataset[
-                index]  # Remember that S_images has 1 image more than Sa_images because index ffor Sa is index-1
-            path_output = self.dataset[index].replace("S_images", "Sa_images")
+        try :
+            if not self.val:
+                path = self.dataset[
+                    index]  # Remember that S_images has 1 image more than Sa_images because index ffor Sa is index-1
+                path_output = self.dataset[index].replace("S_images", "Sa_images")
 
-            pickled_arr, _ = pickle.load(open(path, "rb"))
-            pickled_arr_output = pickle.load(open(path_output, "rb"))
-
-            # if self.transform is not None:
-            #     img = self.transform(img)
-
-            return pickled_arr, pickled_arr_output
-
+                pickled_arr, _ = pickle.load(open(path, "rb"))
+                pickled_arr_output = pickle.load(open(path_output, "rb"))
+                noise = torch.randn(1, 84, 84)
+                noise = noise
+                # if self.transform is not None:
+                #     img = self.transform(img)
+                # for experimental self.transform(pickled_arr_output.to(torch.float32))
+                return  pickled_arr, pickled_arr_output  # was pickled_arr, pickled_arr_output
+        except Exception:
+            print("the fuck")
+            traceback.print_exc()
+            exit(555)
 
 class DeblurDataset(object):
     def __init__(self, data_path):
@@ -59,7 +71,7 @@ class DeblurDataset(object):
                 if folder == "Sa_images":
 
                     self.data_val.append(osp.join(self.data_path, folder, fname))
-                else:
+                elif folder == "S_images":
                     self.data_train.append(osp.join(self.data_path, folder, fname))
 
         return self
@@ -126,7 +138,8 @@ def train_reward_model():
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     plot = []
-    for epoch in range(20):
+
+    for epoch in range(7):
         model.train()
         running_loss = 0.0
 
@@ -145,7 +158,8 @@ def train_reward_model():
             plot.append(loss_reward.item())
 
             loss_reward.backward()
-            print("predicted reward {} actual reward {}".format(torch.argmax(models_reward[0]).item(),actual_reward[0].item()))
+            print("predicted reward {} actual reward {}".format(torch.argmax(models_reward[0]).item(),
+                                                                actual_reward[0].item()))
             print(f"loss image {running_loss / (i + 1)}")
 
             optimizer.step()
@@ -182,7 +196,7 @@ def balance_files():
     lowest_value = min(len(data_path_1), len(data_path_2), len(data_path_3))
     balanced_list = data_path_1[:lowest_value] + data_path_2[:lowest_value] + data_path_3[:lowest_value]
 
-    return data_path_1 + data_path_2+data_path_3
+    return data_path_1 + data_path_2 + data_path_3
 
 
 def train_gan():
@@ -192,22 +206,34 @@ def train_gan():
                              ]
     from torch.utils.data import DataLoader
     import matplotlib.pyplot as plt
+    counter = 0
     train_transforms_list = [transforms.ToTensor(),
                              transforms.ToPILImage()]
     train_transforms = transforms.Compose(train_transforms_list)
     data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
-    data_train_loader = DataLoader(data_train, batch_size=32, shuffle=True, num_workers=16)
+    data_train_loader = DataLoader(data_train, batch_size=32,shuffle=True,num_workers=4) #comeback shuffle=True
     model = UNet(5, 1).cuda()
-    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
+    #model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\GAN11_new.pt"))
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
-    optimizer_reward = Adam(model.parameters(), lr=0.0005)
+    discriminator = DiscriminatorSmall(2).cuda()
+    #discriminator.load_state_dict(
+    #    torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\DISC1235678RIMINATOR3.pt"))
+    optimizer_reward = Adam(model.parameters(), lr=3e-4)
     plot = []
     plot_reward = []
+    optimizer_discrimnator = SGD(discriminator.parameters(), lr=0.01, momentum=0.9)
+    l1_loss = torch.nn.L1Loss().cuda()
 
-    for epoch in range(20):
+    gan_loss = torch.nn.BCELoss().cuda()
+
+    # while x <= 1000:
+    #     alpha = x
+    generator_amplifier = 3
+    discriminator_deamplifier = 15
+    for epoch in range(30):
         model.train()
         running_loss = 0.0
-
+        starting_gan = 0.1
         for i, img in enumerate(data_train_loader):
             img_blur, img_sharp = img
             optimizer.zero_grad()
@@ -217,39 +243,75 @@ def train_gan():
             img_deblur = model(img_blur)
 
             # loss_reward = BCEWithLogitsLoss()(reward , reward_actual)
-            loss = mse_loss(img_deblur, img_sharp)
-
+            loss = l1_loss(img_deblur, img_sharp)
+            generator = discriminator(img_deblur)
+            loss_gan = gan_loss(generator, torch.ones_like(generator))
             running_loss += loss.item()
 
             plot.append(loss.item())
+            dis_mse_loss = loss*generator_amplifier + loss_gan/discriminator_deamplifier
+            # if dis_mse_loss > 1:
+            #     starting_gan*=100
+            # if dis_mse_loss < 0.1:
+            #     starting_gan*=1.2
 
-            loss.backward()
+            dis_mse_loss.backward()
 
-            print(f"loss image {running_loss / (i + 1)}")
-
+            # print(f"loss image {running_loss / (i + 1)} for alpha {alpha}")
+            print(f"combined Loss : {dis_mse_loss} with starting gan being {starting_gan}")
             optimizer.step()
+
+            optimizer_discrimnator.zero_grad()
+            disc_true = discriminator(img_sharp)
+            disc_fake = discriminator(img_deblur.detach())
+            disc_true_loss = gan_loss(disc_true, torch.ones_like(disc_true))
+            disc_fake_loss = gan_loss(disc_fake, torch.zeros_like(disc_fake))
+
+            discriminator_loss = disc_true_loss + disc_fake_loss
+            discriminator_loss.backward()
+            optimizer_discrimnator.step()
             # if i == len(data_train_loader)-1:
             #     last_deblurs = img_deblur
+        print(f"finished epoch {epoch}")
         # plt.plot(plot)
         # plt.show()
-        if epoch % 5 == 0:
-            torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt")
-    plt.plot(plot_reward)
-    plt.show()
-    print(f"finished epoch {epoch}")
-    input_image = img_blur[0][0].detach().cpu().numpy().squeeze()
-    predicted_output_img = img_deblur[0].detach().cpu().numpy().squeeze()
-    actual_output = img_sharp[0].detach().cpu().numpy().squeeze()
-    plt.imshow(input_image)
+        if epoch % 2 == 0:
+            torch.save(discriminator.state_dict(),
+                       f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+            torch.save(model.state_dict(),
+                       f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+        plt.plot(plot_reward)
+        plt.show()
 
-    plt.show()
-    plt.imshow(predicted_output_img)
-    plt.show()
-    plt.imshow(actual_output)
-    plt.show()
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt")
-    plt.plot(plot)
-    plt.show()
+        input_image = img_blur[0][0].detach().cpu().numpy().squeeze()
+        predicted_output_img = img_deblur[0].detach().cpu().numpy().squeeze()
+        actual_output = img_sharp[0].detach().cpu().numpy().squeeze()
+        plt.imshow(input_image, cmap='gray', vmin=0, vmax=1)
+        save_plot_and_dump_pickle(counter, input_image,"input")
+        plt.show()
+        counter+=1
+        plt.imshow(predicted_output_img, cmap='gray', vmin=0, vmax=1)
+        plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_gan_response', bbox_inches='tight')
+        plt.show()
+        counter += 1
+        plt.imshow(actual_output, cmap='gray', vmin=0, vmax=1)
+        plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_ground_truth',
+                    bbox_inches='tight')
+        plt.show()
+        counter += 1
+        torch.save(discriminator.state_dict(),
+                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+        torch.save(model.state_dict(),
+                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+        plt.plot(plot)
+        plt.show()
+        # x*=10
+
+
+def save_plot_and_dump_pickle(counter, input_image,source):
+    plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_input', bbox_inches='tight')
+    with open(f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_{source}.pickle", 'wb') as handle:
+        pickle.dump(input_image, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def validate_prepare_data():
@@ -259,6 +321,100 @@ def validate_prepare_data():
     #    open("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\validate_gan\\state_s_1.pickle", "rb"))
 
     return (pickled_arr, None)
+
+
+def experimental_train():
+    train_transforms_list = [transforms.ToPILImage(),
+                             transforms.Resize((20, 20)),
+                             transforms.ToTensor()]
+    train_transforms = transforms.Compose(train_transforms_list)
+
+    data_train = ImageDataset(DeblurDataset(data_path).get_paths().data_train, transform=train_transforms)
+    data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=8)
+
+    discriminator = DiscriminatorSmall(32).cuda()
+    model = GeneratorSmall(32).cuda()
+
+    optim_discriminator = torch.optim.Adam(discriminator.parameters(), lr=3e-4, betas=(0.5, 0.999))
+    optim_generator = torch.optim.Adam(model.parameters(), lr=3e-4, betas=(0.5, 0.999))
+    crit_discriminator = torch.nn.BCELoss().cuda()
+    crit_generator = torch.nn.BCELoss().cuda()
+    for _ in range(8):
+        model.train()
+        discriminator.train()
+        for i, img in enumerate(data_train_loader):
+            img_blur, img_sharp = img
+
+            img_sharp = img_sharp.float().cuda()
+            img_blur = img_blur.float().cuda()
+
+            # Generate noise
+            noise = torch.randn(64, 100, 1, 1).cuda()
+            fake_imgs = model(noise)
+
+            optim_discriminator.zero_grad()
+            # train with real
+            pred_true = discriminator(img_sharp)
+            loss_disc_true = crit_discriminator(pred_true, torch.ones_like(pred_true))
+
+            # train with fake
+            pred_fake = discriminator(fake_imgs.detach())
+            loss_disc_fake = crit_discriminator(pred_fake, torch.zeros_like(pred_fake))
+
+            loss_disc = loss_disc_true + loss_disc_fake
+            loss_disc.backward()
+
+            optim_discriminator.step()
+            print(loss_disc.item())
+            # Generator
+            optim_generator.zero_grad()
+
+            pred_fake_gen = discriminator(fake_imgs)
+            loss_gen = crit_generator(pred_fake_gen, torch.ones_like(pred_fake_gen))
+            loss_gen.backward()
+
+            optim_generator.step()
+
+            # second iteration
+            optim_generator.zero_grad()
+            noise = torch.randn(64, 100, 1, 1).cuda()
+            fake_imgs = model(noise)
+            pred_fake_gen = discriminator(fake_imgs)
+            loss_gen = crit_generator(pred_fake_gen, torch.ones_like(pred_fake_gen))
+            loss_gen.backward()
+
+            optim_generator.step()
+
+            # second iteration
+            optim_generator.zero_grad()
+            noise = torch.randn(64, 100, 1, 1).cuda()
+            fake_imgs = model(noise)
+            pred_fake_gen = discriminator(fake_imgs)
+            loss_gen = crit_generator(pred_fake_gen, torch.ones_like(pred_fake_gen))
+            loss_gen.backward()
+
+            optim_generator.step()
+
+            # second iteration
+            optim_generator.zero_grad()
+            noise = torch.randn(64, 100, 1, 1).cuda()
+            fake_imgs = model(noise)
+            pred_fake_gen = discriminator(fake_imgs)
+            loss_gen = crit_generator(pred_fake_gen, torch.ones_like(pred_fake_gen))
+            loss_gen.backward()
+
+            optim_generator.step()
+
+        plt.imshow(fake_imgs[0].detach().cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
+        plt.show()
+        plt.imshow(fake_imgs[1].detach().cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
+        plt.show()
+        plt.imshow(fake_imgs[2].detach().cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
+        plt.show()
+        torch.save(discriminator.state_dict(),
+                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\Experimental_dis.pt")
+        torch.save(model.state_dict(),
+                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\Experimental_gen.pt")
 
 
 def validate_gan():
@@ -295,4 +451,5 @@ if __name__ == '__main__':
     train_gan()
     # validate_gan()
     # balance_files()
-    #train_reward_model()
+    # train_reward_model()
+    # experimental_train()

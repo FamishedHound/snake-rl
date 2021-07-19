@@ -1,3 +1,4 @@
+import pickle
 import random
 
 from DQN.model import DQN
@@ -46,14 +47,14 @@ class DQN_agent():
         self.previous_reward = None
         self.x = 0
         self.plot = []
-
+        self.country = 0
         self.gan = UNet(5, 1)
         self.reward_predictor = reward_model(5)
         self.gan = self.gan.cuda()
         self.reward_predictor = self.reward_predictor.cuda()
-        self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\GAN_1.pt"))
-        self.reward_predictor.load_state_dict(
-            torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
+        #self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\FULLY_OPERATIONAL_GAN3.pt"))
+        #self.reward_predictor.load_state_dict(
+       #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
         self.gan.eval()
         self.reward_predictor.eval()
     def update_Q_network(self):
@@ -152,8 +153,8 @@ class DQN_agent():
 
             self.debug(action)
 
-            self.update_memory(reward, terminal, state, 50)
-            #self.update_memory(reward, terminal, state)
+            #self.update_memory(reward, terminal, state, 50)
+            self.update_memory(reward, terminal, state)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -185,7 +186,7 @@ class DQN_agent():
             self.epsilon -= self.epsilon_speed
 
         if self.x % 111 == 0:
-            self.show_some_memory()
+            #self.show_some_memory()
             if self.save_model:
                 print("weights saved :) ")
 
@@ -193,27 +194,27 @@ class DQN_agent():
             print(self.epsilon)
             print(action)
 
-    # Update memory without GAN
-    # def update_memory(self, reward, terminal, state):
-    #     if self.flag:
-    #         self.memory.append(
-    #             (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
-    #              reward))
-    #
-    #         self.update_Q_network()
-    def update_memory(self, reward, terminal, state, how_many_frames):
-        self.gan.eval()
-        counter = 0
-        buffer_memory = []
-        current_states_to_generate = [state]
-        while len(buffer_memory) < how_many_frames:
-            temp = []
-            for states in current_states_to_generate:
-                for action_number in range(4):
-                    temp.append(self.recursive_memory_creation(states, action_number, buffer_memory))
-            current_states_to_generate = temp
-        [self.memory.append(x) for x in buffer_memory]
-        self.update_Q_network()
+    #Update memory without GAN
+    def update_memory(self, reward, terminal, state):
+        if self.flag:
+            self.memory.append(
+                (self.previous_state, self.previous_action, self.previous_reward, state, terminal,
+                 reward))
+
+            self.update_Q_network()
+    # def update_memory(self, reward, terminal, state, how_many_frames):
+    #     self.gan.eval()
+    #     counter = 0
+    #     buffer_memory = []
+    #     current_states_to_generate = [state]
+    #     while len(buffer_memory) < how_many_frames:
+    #         temp = []
+    #         for states in current_states_to_generate:
+    #             for action_number in range(4):
+    #                 temp.append(self.recursive_memory_creation(states, action_number, buffer_memory))
+    #         current_states_to_generate = temp
+    #     [self.memory.append(x) for x in buffer_memory]
+    #     self.update_Q_network()
 
     def recursive_memory_creation(self, state, which_action, buffer_memory):
         with torch.no_grad():
@@ -233,6 +234,16 @@ class DQN_agent():
             reward = self.reward_predictor(now_future.unsqueeze(0))
             reward = self.determine_reward(reward)
 
+            plt.imshow(state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
+            plt.show()
+            plt.imshow(future_state.squeeze().cpu(), cmap='gray', vmin=0, vmax=1)
+            plt.show()
+            # with open(f'random_frames/{self.country}.pickle', 'wb') as handle:
+            #     pickle.dump(state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            # self.country += 1
+            # with open(f'random_frames/{self.country}.pickle', 'wb') as handle:
+            #     pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            # self.country+=1
             terminal = False
             terminal_reward = 0
 
@@ -255,13 +266,15 @@ class DQN_agent():
 
         return rewards[reward_in]
     def show_some_memory(self):
-        for x in self.memory.sample(10):
+        for x in self.memory.sample(1000):
             (state, which_action, reward, future_state, terminal, terminal_reward) = x
-            plt.imshow(state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
-            plt.show()
-            plt.imshow(future_state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
-            plt.show()
-            print(f"a{which_action}, r{reward}, is_t{terminal_reward} , t_r{terminal_reward}")
+            if reward==10:
+                plt.imshow(state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+                plt.show()
+                plt.imshow(future_state.cpu().numpy().squeeze(),cmap='gray',vmax=1,vmin=0)
+                plt.show()
+                print(f"a{which_action}, r{reward}, is_t{terminal_reward} , t_r{terminal_reward}")
+                break
     def sync_networks(self):
         if self.sync_counter % 10 == 0:
             self.update_target_network()

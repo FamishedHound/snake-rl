@@ -8,8 +8,8 @@ import numpy as np
 class DQN(nn.Module):
     def __init__(self, action_no, how_many_frames):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(how_many_frames, 32, 8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        self.conv1 = nn.Conv2d(how_many_frames, 32, 8, stride=4) #was 1
+        self.conv2 = nn.Conv2d(32, 64, 4, stride=2)# was 1
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
 
         self.tick = 0
@@ -38,7 +38,7 @@ class DQN(nn.Module):
 
         x = F.relu(self.conv3(x))
 
-        x = F.relu(self.fc1(x.view(x.size(0), 7 * 7 * 64)))
+        x = F.relu(self.fc1(x.view(x.size(0), 7 * 7 * 64))) # was 4* 4
 
         x = self.fc2(x)
 

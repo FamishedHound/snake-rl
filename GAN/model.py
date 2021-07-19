@@ -9,9 +9,7 @@ class UNet(nn.Module):
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-
-
-
+        self.input_droput = nn.Dropout(0.8)
 
         # Unet
         self.inc = DoubleConv(n_channels, 64)
@@ -29,6 +27,7 @@ class UNet(nn.Module):
         evil_twin_of_x = x
 
         x1 = self.inc(x)
+
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
