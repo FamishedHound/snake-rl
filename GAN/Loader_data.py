@@ -15,17 +15,17 @@ from torchvision import transforms
 import torch
 import matplotlib.pyplot as plt
 import traceback
-
-from GAN import discriminator
+#import discriminator
 # from GAN.discriminator import DiscriminatorSmall
-from GAN.model import UNet
+from model import UNet
 from torch.utils.data import DataLoader
 
-from GAN.reward_model import reward_model
-from GAN.testing_architectures import GeneratorSmall, DiscriminatorSmall
+from reward_model import reward_model
+from testing_architectures import GeneratorSmall, DiscriminatorSmall
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+proj_path = "C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\"
 
 class ImageDataset(Dataset):
 
@@ -54,7 +54,7 @@ class ImageDataset(Dataset):
                 # for experimental self.transform(pickled_arr_output.to(torch.float32))
                 return  pickled_arr, pickled_arr_output  # was pickled_arr, pickled_arr_output
         except Exception:
-            print("the fuck")
+            print(str(index) + " Fucked\n")
             traceback.print_exc()
             exit(555)
 
@@ -134,7 +134,7 @@ def train_reward_model():
     data_train_loader = DataLoader(data_train, batch_size=64, shuffle=True, num_workers=16)
 
     model = reward_model(5).cuda()
-    model.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
+    model.load_state_dict(torch.load(proj_path + "GAN_models\\reward_predictor.pt"))
     optimizer = SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     plot = []
@@ -163,13 +163,13 @@ def train_reward_model():
             print(f"loss image {running_loss / (i + 1)}")
 
             optimizer.step()
-    torch.save(model.state_dict(), "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt")
+    torch.save(model.state_dict(), proj_path + "GAN_models\\reward_predictor.pt")
     plt.plot(plot)
     plt.show()
 
 
 def balance_files():
-    data_path = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward"
+    data_path = proj_path + "train_reward"
     counter_1 = 0
     data_path_1 = []
     counter_2 = 0
@@ -277,9 +277,9 @@ def train_gan():
         # plt.show()
         if epoch % 2 == 0:
             torch.save(discriminator.state_dict(),
-                       f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+                       proj_path + f"new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
             torch.save(model.state_dict(),
-                       f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+                       proj_path + f"new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
         plt.plot(plot_reward)
         plt.show()
 
@@ -291,32 +291,32 @@ def train_gan():
         plt.show()
         counter+=1
         plt.imshow(predicted_output_img, cmap='gray', vmin=0, vmax=1)
-        plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_gan_response', bbox_inches='tight')
+        plt.savefig(proj_path + f'images\\{counter}_gan_response', bbox_inches='tight')
         plt.show()
         counter += 1
         plt.imshow(actual_output, cmap='gray', vmin=0, vmax=1)
-        plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_ground_truth',
+        plt.savefig(proj_path + f'images\\{counter}_ground_truth',
                     bbox_inches='tight')
         plt.show()
         counter += 1
         torch.save(discriminator.state_dict(),
-                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+                   proj_path + f"new_models\\discriminator13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
         torch.save(model.state_dict(),
-                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
+                   proj_path + f"new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
         plt.plot(plot)
         plt.show()
         # x*=10
 
 
 def save_plot_and_dump_pickle(counter, input_image,source):
-    plt.savefig(f'C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_input', bbox_inches='tight')
-    with open(f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\images\\{counter}_{source}.pickle", 'wb') as handle:
+    plt.savefig(proj_path + f'images\\{counter}_input', bbox_inches='tight')
+    with open(proj_path + f"images\\{counter}_{source}.pickle", 'wb') as handle:
         pickle.dump(input_image, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def validate_prepare_data():
     pickled_arr = pickle.load(
-        open("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\validate_gan\\state_s_188.pickle", "rb"))
+        open(proj_path + "validate_gan\\state_s_188.pickle", "rb"))
     # pickled_arr_output = pickle.load(
     #    open("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\validate_gan\\state_s_1.pickle", "rb"))
 
@@ -412,9 +412,9 @@ def experimental_train():
         plt.imshow(fake_imgs[2].detach().cpu().numpy().squeeze(), cmap='gray', vmax=1, vmin=0)
         plt.show()
         torch.save(discriminator.state_dict(),
-                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\Experimental_dis.pt")
+                   proj_path + f"GAN_models\\Experimental_dis.pt")
         torch.save(model.state_dict(),
-                   f"C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\Experimental_gen.pt")
+                   proj_path + f"GAN_models\\Experimental_gen.pt")
 
 
 def validate_gan():
@@ -444,8 +444,8 @@ def validate_gan():
 
 if __name__ == '__main__':
     bla = 1
-    data_path = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train\\"
-    data_path2 = "C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\train_reward"
+    data_path = "C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\train\\"
+    data_path2 = "C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\train_reward"
     # train,val = DeblurDataset(data_path).get_paths()
 
     train_gan()

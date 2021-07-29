@@ -1,5 +1,6 @@
+import os
 import pickle
-
+import time
 import torch
 from scipy import ndimage, misc
 import numpy as np
@@ -46,7 +47,7 @@ class Board():
         self.running = True
         self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn, self.snake)
 
-        self.index = 77000
+        self.index = 96662 ### Why 77000 and not 0?
         self.index_helper = 0
         self.collision = collision(self.apple, self.snake)
         self.apple.spawn_apple()
@@ -61,7 +62,7 @@ class Board():
 
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=8,
                                    epsilon=1, save_model=False, load_model=True,
-                                   path="C:\\Users\\LukePC\\PycharmProjects\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
+                                   path="C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
                                    epsilon_speed=1e-4)
         self.reward = 0
         self.action = None
@@ -98,6 +99,10 @@ class Board():
             # plt.show()
             action = self.dqn_agent.make_action(img, reward,
                                                 True if reward == -1 or reward == 10 else False)
+            #action = int(input())
+            #print(action)
+            ### TEMP RUN AT HUMAN SPEED
+            #time.sleep(1/5)
             # self.snake.action(action)
             # for moving apple
             if self.apple_movement_flag == False:
@@ -129,6 +134,8 @@ class Board():
                     self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
                                           target_pos=(self.new_pos_x, self.new_pos_y))
             self.create_actions_channels(action, img, reward)
+
+        os.remove(f'train/S_images/state_s_{num_images}.pickle')
 
     def draw_sprites(self):
         self.draw_board()
