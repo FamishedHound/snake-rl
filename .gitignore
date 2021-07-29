@@ -12,3 +12,6 @@ new_models/
 saved_models/
 DQN_trained_model/
 video_prediction/
+__pycache__
+DQN/__pycache__
+GAN/__pycache__
