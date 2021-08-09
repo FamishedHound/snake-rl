@@ -46,7 +46,8 @@ class Board():
 
         self.running = True
         self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn, self.snake)
-
+        self.new_pos_x = 0
+        self.new_pos_y = 0
         self.index = 96662 ### Why 77000 and not 0?
         self.index_helper = 0
         self.collision = collision(self.apple, self.snake)
@@ -80,16 +81,18 @@ class Board():
             self.epsilon = 0.1
 
     def run(self):
-
+        num_images = 0
         while self.running:
+            num_images += 1
             pygame.display.flip()
             reward = self.collision.return_reward(self.height, self.width)
             self.clockobject.tick(self.speed)
             if reward == -1:
                 self.apple_movement_flag = False
-            self.draw_sprites()
+            
             print(reward)
             self.process_input()
+            self.draw_sprites()
 
             self.snake.draw_segment()
             self.apple.draw_apple()
@@ -98,7 +101,7 @@ class Board():
             # plt.imshow(img, cmap='gray', vmin=0, vmax=1)
             # plt.show()
             action = self.dqn_agent.make_action(img, reward,
-                                                True if reward == -1 or reward == 10 else False)
+                      True if reward == -1 or reward == 10 else False)
             #action = int(input())
             #print(action)
             ### TEMP RUN AT HUMAN SPEED
@@ -144,7 +147,6 @@ class Board():
 
     def lose_win_scenario(self, reward):
         if reward == -1 or reward == 10:
-
             if reward == -1:
                 print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
@@ -178,7 +180,6 @@ class Board():
         return self.ProcessGameImage(inside)
 
     def process_input(self):
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False  # Be interpreter friendly
@@ -198,8 +199,8 @@ class Board():
                 if event.key == pygame.K_DOWN:
                     self.speed = 1
                 # print(action)
-
             pygame.display.update()
+        return
 
     def ProcessGameImage(self, RawImage):
         GreyImage = skimage.color.rgb2gray(RawImage)
@@ -304,6 +305,52 @@ class Board():
         #  pickle.dump((state_action,reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
         self.previous_gan_action = action
 
+    def render(self):
+        self.draw_sprites()
+        self.snake.draw_segment()
+        self.apple.draw_apple()
+        return 
+
+    def update_game(self, user_input):
+        reward, done = self.get_reward()
+        action = user_input
+        img = self.get_state()       
+        if reward != 10:
+            self.snake.action(action)
+        if reward == 10:
+            action = None
+            self.past_action = action
+            self.new_pos_x, self.new_pos_y = self.apple.spawn_apple()
+            self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
+                                        target_pos=(self.new_pos_x, self.new_pos_y),
+                                        crawl_flag=True)
+        self.snake.move_segmentation()
+        
+        self.tick += 1
+        self.lose_win_scenario(reward)
+        self.games_count += 1           
+        return img, reward, done
+
+    def get_reward(self):
+        reward = self.collision.return_reward(self.height, self.width)
+        self.clockobject.tick(self.speed)
+        done = False
+        if reward == -1:
+            done = True
+        return reward, done
+
+    def run_step(self, user_input=None, apple_crawl=True):
+        pygame.display.flip()
+        self.update_game(user_input)
+        self.process_input()
+        self.render()
+        return
 
 snake = Board(4, 4)
-snake.run()
+#snake.run()
+#snake.render()
+while True:
+    user_input = int(input())
+    pygame.display.set_caption(str(user_input))
+    snake.run_step(user_input)
+    snake.run_step(22)

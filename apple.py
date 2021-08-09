@@ -32,24 +32,31 @@ class apple():
         # for moving apple ____
         return x, y
 
-    def move_apple(self, curr_apple_pos, target_pos):
+    def move_apple(self, curr_apple_pos, target_pos, crawl_flag=True):
         cur_app_x, curr_app_y = curr_apple_pos
         dest_app_x, dest_app_y = target_pos
 
-        if curr_app_y != dest_app_y:
-            if curr_app_y < dest_app_y:
-                curr_app_y += 1
+        if crawl_flag:
+            if curr_app_y != dest_app_y:
+                if curr_app_y < dest_app_y:
+                    curr_app_y += 1
+                else:
+                    curr_app_y -= 1
             else:
-                curr_app_y -= 1
+                if cur_app_x < dest_app_x:
+                    cur_app_x += 1
+                else:
+                    cur_app_x -= 1
+            self.x = cur_app_x
+            self.y = curr_app_y
+            self.apple_position = (self.x, self.y)
+            return cur_app_x, curr_app_y
         else:
-            if cur_app_x < dest_app_x:
-                cur_app_x += 1
-            else:
-                cur_app_x -= 1
-        self.x = cur_app_x
-        self.y = curr_app_y
-        self.apple_position = (self.x, self.y)
-        return cur_app_x, curr_app_y
+            self.x = dest_app_x
+            self.y = dest_app_y
+            self.apple_position = (self.x, self.y)
+            return dest_app_x, dest_app_y
+        
 
     def is_apple_on_snake(self, x, y):
 

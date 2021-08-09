@@ -35,16 +35,16 @@ class ImageDataset(Dataset):
         self.val = val
 
     def __len__(self):
-        return 140000
+        return 133000 #The reason index out of range??
 
 
     def __getitem__(self, index):
         try :
             if not self.val:
-                path = self.dataset[
-                    index]  # Remember that S_images has 1 image more than Sa_images because index ffor Sa is index-1
+                
+                path = self.dataset[index]  # Remember that S_images has 1 image more than Sa_images because index ffor Sa is index-1
                 path_output = self.dataset[index].replace("S_images", "Sa_images")
-
+                #print(str(index) + " Worked\n")
                 pickled_arr, _ = pickle.load(open(path, "rb"))
                 pickled_arr_output = pickle.load(open(path_output, "rb"))
                 noise = torch.randn(1, 84, 84)
