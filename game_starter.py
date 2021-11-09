@@ -82,63 +82,86 @@ class Board():
 
     def run(self):
         num_images = 0
-        while self.running:
-            num_images += 1
-            pygame.display.flip()
-            reward = self.collision.return_reward(self.height, self.width)
-            self.clockobject.tick(self.speed)
-            if reward == -1:
-                self.apple_movement_flag = False
-            
-            print(reward)
-            self.process_input()
-            self.draw_sprites()
+        score_arr = []
+        episodes = 2000
+        for i in range(0, episodes):
+            score = 0
+            print(f"New Episode: {i}")
+            while self.running:
+                
+                pygame.display.flip()
+                reward = self.collision.return_reward(self.height, self.width)
+                self.clockobject.tick(self.speed)
+                
+                
+                #print(f"Reward this step: {reward}")
+                """
+                self.process_input()
+                self.draw_sprites()
 
-            self.snake.draw_segment()
-            self.apple.draw_apple()
-            img = self.get_state()
+                self.snake.draw_segment()
+                self.apple.draw_apple()
+                img = self.get_state()
 
-            # plt.imshow(img, cmap='gray', vmin=0, vmax=1)
-            # plt.show()
-            action = self.dqn_agent.make_action(img, reward,
-                      True if reward == -1 or reward == 10 else False)
-            #action = int(input())
-            #print(action)
-            ### TEMP RUN AT HUMAN SPEED
-            #time.sleep(1/5)
-            # self.snake.action(action)
-            # for moving apple
-            if self.apple_movement_flag == False:
+                # plt.imshow(img, cmap='gray', vmin=0, vmax=1)
+                # plt.show()
+                """
+                img = self.get_state()
+                action = self.dqn_agent.make_action(img, reward,
+                        True if reward == -1 or reward == 10 else False)
 
-                 # was if reward == 10 or
 
-                if reward != 10:
-                    self.snake.action(action)
-                if reward == 10:
-                    self.apple_movement_flag = True
+                snake.run_step(action, apple_crawl=False)
+                #action = int(input())
+                #print(action)
+                ### TEMP RUN AT HUMAN SPEED
+                #time.sleep(1/5)
+                # self.snake.action(action)
+                # for moving apple
+                """
+                if self.apple_movement_flag == False:
+
+                    # was if reward == 10 or
+
+                    if reward != 10:
+                        self.snake.action(action)
+                    if reward == 10:
+                        self.apple_movement_flag = True
+                        action = None
+                        self.past_action = action
+                        self.new_pos_x, self.new_pos_y = self.apple.spawn_apple()
+                
+                # self.snake.action(action)
+                self.tick += 1
+                self.lose_win_scenario(reward)
+                self.games_count += 1
+
+                if self.apple_movement_flag == False:
+                    self.snake.move_segmentation()
+                # for moving apple
+                if self.apple_movement_flag:
                     action = None
-                    self.past_action = action
-                    self.new_pos_x, self.new_pos_y = self.apple.spawn_apple()
+                    if self.apple.x == self.new_pos_x and self.apple.y == self.new_pos_y:
+                        self.apple_movement_flag = False
 
-            # self.snake.action(action)
-            self.tick += 1
-            self.lose_win_scenario(reward)
-            self.games_count += 1
+                    else:
+                        self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
+                                            target_pos=(self.new_pos_x, self.new_pos_y))
+                """
+                
+                self.create_actions_channels(action, img, reward)
+                num_images += 1
 
-            if self.apple_movement_flag == False:
-                self.snake.move_segmentation()
-            # for moving apple
-            if self.apple_movement_flag:
-                action = None
-                if self.apple.x == self.new_pos_x and self.apple.y == self.new_pos_y:
-                    self.apple_movement_flag = False
-
-                else:
-                    self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
-                                          target_pos=(self.new_pos_x, self.new_pos_y))
-            self.create_actions_channels(action, img, reward)
-
-        os.remove(f'train/S_images/state_s_{num_images}.pickle')
+                if reward == 10:
+                    score += 1
+                if reward == -1:
+                    break;
+            score_arr.append(score)   
+            if i%100 == 0:
+                plot_results(score_arr) 
+        print(num_images)
+        
+        os.remove(f'D:/ProjPickleDump/train_steps/S_images/state_s_{self.index + num_images}.pickle')
 
     def draw_sprites(self):
         self.draw_board()
@@ -277,11 +300,11 @@ class Board():
         #
         # # GAN
         if self.index > 0:
-            with open(f"train/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
+            with open(f"D:/ProjPickleDump/train_steps/Sa_images/state_s_{self.index - 1}.pickle", 'wb') as handle:
                 future_state = torch.from_numpy(img).unsqueeze(0)
                 pickle.dump(future_state, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        with open(f'train/S_images/state_s_{self.index}.pickle', 'wb') as handle:
+        with open(f'D:/ProjPickleDump/train_steps/S_images/state_s_{self.index}.pickle', 'wb') as handle:
             pickle.dump((state_action, np_reward), handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # RNN
@@ -311,10 +334,14 @@ class Board():
         self.apple.draw_apple()
         return 
 
-    def update_game(self, user_input):
+    def update_game(self, user_input, crawl_flag=False):
         reward, done = self.get_reward()
-        action = user_input
-        img = self.get_state()       
+        img = self.get_state()
+        if(user_input is None):
+            action = self.dqn_agent.make_action(img, reward,
+                      True if reward == -1 or reward == 10 else False)
+        else:
+            action = user_input
         if reward != 10:
             self.snake.action(action)
         if reward == 10:
@@ -323,12 +350,13 @@ class Board():
             self.new_pos_x, self.new_pos_y = self.apple.spawn_apple()
             self.apple.move_apple(curr_apple_pos=(self.apple.x, self.apple.y),
                                         target_pos=(self.new_pos_x, self.new_pos_y),
-                                        crawl_flag=True)
+                                        crawl_flag=crawl_flag)
         self.snake.move_segmentation()
         
         self.tick += 1
         self.lose_win_scenario(reward)
-        self.games_count += 1           
+        self.games_count += 1
+
         return img, reward, done
 
     def get_reward(self):
@@ -341,16 +369,30 @@ class Board():
 
     def run_step(self, user_input=None, apple_crawl=True):
         pygame.display.flip()
-        self.update_game(user_input)
+        self.update_game(user_input, crawl_flag=apple_crawl)
         self.process_input()
         self.render()
+        user_input = None
         return
 
-snake = Board(4, 4)
-#snake.run()
+    def get_GAN_guess(self):
+        pass
+
+def plot_results(rewards):
+    plt.figure(figsize=(12,5))
+    plt.title("Rewards")
+    plt.plot(rewards, alpha=0.6, color='red')
+    plt.savefig("Snake_Rewards_plot.png")
+    plt.close()
+
+try:
+    snake = Board(5, 5)
+    snake.run()
+except BaseException as error:
+    print('An exception occurred: {}'.format(error))
 #snake.render()
-while True:
+"""while True:
     user_input = int(input())
     pygame.display.set_caption(str(user_input))
-    snake.run_step(user_input)
-    snake.run_step(22)
+    snake.run_step(user_input, apple_crawl=False)
+    snake.run_step(22)"""
