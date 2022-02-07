@@ -1,8 +1,5 @@
 import pygame
 
-
-
-
 class Segment():
     def __init__(self, x, y, block_size, screen,direction):
         self.direction = direction

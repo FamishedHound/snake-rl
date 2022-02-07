@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from DQN.DQN_agent import DQN_agent
 
 class ControllerModel(nn.Module):
     def __init__(self, input_size=1, hidden_size=64, output_size=1):

@@ -31,6 +31,9 @@ load_tables_from_file = (False, "9x9model")
 
 range_of_apple_spawn = (1, 2)
 
+BOARD_WIDTH = 5
+BOARD_HEIGHT = 5
+
 
 class Board():
     def __init__(self, height, width):
@@ -206,7 +209,7 @@ class Board():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False  # Be interpreter friendly
-                self.game_manager.save_model("9x9model")
+                self.game_manager.save_model(f"{BOARD_WIDTH}x{BOARD_HEIGHT}model")
                 pygame.quit()
             if event.type == pygame.KEYDOWN:
                 # print("hgere")
@@ -373,7 +376,8 @@ class Board():
         self.process_input()
         self.render()
         user_input = None
-        return
+        rwd, done = self.get_reward()
+        return (self.get_state(), rwd, done)
 
     def get_GAN_guess(self):
         pass
@@ -385,14 +389,15 @@ def plot_results(rewards):
     plt.savefig("Snake_Rewards_plot.png")
     plt.close()
 
-try:
-    snake = Board(5, 5)
-    snake.run()
-except BaseException as error:
-    print('An exception occurred: {}'.format(error))
-#snake.render()
-"""while True:
-    user_input = int(input())
-    pygame.display.set_caption(str(user_input))
-    snake.run_step(user_input, apple_crawl=False)
-    snake.run_step(22)"""
+if __name__ == "__main__":
+    try:
+        snake = Board(BOARD_WIDTH, BOARD_HEIGHT)
+        snake.run()
+    except BaseException as error:
+        print('An exception occurred: {}'.format(error))
+    #snake.render()
+    """while True:
+        user_input = int(input())
+        pygame.display.set_caption(str(user_input))
+        snake.run_step(user_input, apple_crawl=False)
+        snake.run_step(22)"""
