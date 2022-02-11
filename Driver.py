@@ -2,9 +2,6 @@ from IBP.IBP import IBP
 from Board.Board import Board, BOARD_HEIGHT, BOARD_WIDTH
 from DQN.DQN_agent import DQN_agent
 
-
-
-
 if __name__ == "__main__":
     try:      
         dqn_agent = DQN_agent(action_number=4,
@@ -15,14 +12,21 @@ if __name__ == "__main__":
                                         epsilon=1,
                                         save_model=False,
                                         load_model=True,
-                                        path="C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
+                                        path="C:\\Users\\killi\\Documents\\Repo"
+                                        +"sitories\\snake-rl\\DQN_trained_model"
+                                        +"\\10x10_model_with_tail.pt",
                                         epsilon_speed=1e-4)
 
         board = Board(BOARD_HEIGHT, BOARD_WIDTH, dqn_agent=dqn_agent)
         ibp = IBP(dqn_agent=dqn_agent)
         num_eps = 1000
+        scores = []
         for ep in range(num_eps):            
-            ibp.run(board)
+            
+            score = ibp.run(board)
+            scores.append(score)
+            
+        ibp.plot_results(scores)
         pass
     except BaseException as error:
         print('An exception occurred: {}'.format(error))

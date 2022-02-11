@@ -1,4 +1,5 @@
 import sys
+from matplotlib import pyplot as plt
 sys.path.append("..")
 from DQN.DQN_agent import DQN_agent
 import torch.nn as nn
@@ -38,14 +39,32 @@ class IBP(object):
         return self.controller.make_action(state, reward,
                         True if reward == -1 or reward == 10 else False)
 
+    def plot_results(self, scores):
+        plt.figure(figsize=(12,5))
+        plt.title("Rewards")
+        plt.plot(scores, alpha=0.6, color='red')
+        plt.savefig("Snake_Rewards_plot.png")
+        plt.close()
+
     def run(self, env):
+        history = []
+        num_real = 0
+        num_imagined = 0
+        score = 0
         while True:
+            
             reward = env.collision.return_reward(env.height, env.width)
             state = env.get_state()
             action = self.select_action(state=state, reward=reward)
+            # Remember, run_step automatically updates internal state of 
+            # environment, local state need not be updated with new_state
+            # Same goes for reward - both on previous lines are updated
+            # by environment methods
             new_state, reward, done = env.run_step(action, apple_crawl=False)
-            print(reward)
-            if done:
-                break
-        pass
+            if reward == 10:
+                score += 1            
 
+            if done:
+                return score
+
+        pass
