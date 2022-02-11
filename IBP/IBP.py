@@ -25,10 +25,10 @@ from pygame.locals import (
 class IBP(object):
     def __init__(self, dqn_agent):
         self.manager = ManagerModel()
-        gan_path = "C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\"
+        gan_path = "C:\\Users\\killi\\Repos\\snake-rl\\"
         gan_path += f"new_models\\GAN13_3_15_new.pt"
         self.controller = dqn_agent                         #LOAD IN
-        self.GAN = torch.load(gan_path)                     #BOTH MODELS
+        self.GAN = torch.load(gan_path, map_location=torch.device('cpu'))                     #BOTH MODELS
         # self.reward_predictor = ### Our best rew.prededitor
         # this is likely to just be our controller but excluding everything but 
         # the reward - may not need it?

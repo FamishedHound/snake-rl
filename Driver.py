@@ -12,11 +12,11 @@ if __name__ == "__main__":
                                         epsilon=1,
                                         save_model=False,
                                         load_model=True,
-                                        path="C:\\Users\\killi\\Documents\\Repo"
-                                        +"sitories\\snake-rl\\DQN_trained_model"
+                                        path="C:\\Users\\killi\\Repos\\snake-rl\\DQN_trained_model"
                                         +"\\10x10_model_with_tail.pt",
-                                        epsilon_speed=1e-4)
-
+                                        epsilon_speed=1e-4,
+                                        cudaFlag=False)
+        print("created dqn agent fine")
         board = Board(BOARD_HEIGHT, BOARD_WIDTH, dqn_agent=dqn_agent)
         ibp = IBP(dqn_agent=dqn_agent)
         num_eps = 1000

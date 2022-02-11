@@ -68,8 +68,9 @@ class Board():
 
         self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=8,
                                    epsilon=1, save_model=False, load_model=True,
-                                   path="C:\\Users\\killi\\Documents\\Repositories\\snake-rl\\DQN_trained_model\\10x10_model_with_tail.pt",
-                                   epsilon_speed=1e-4)
+                                   path="C:\\Users\\killi\\Repos\\snake-rl\\DQN_trained_model"
+                                        +"\\10x10_model_with_tail.pt",
+                                   epsilon_speed=1e-4, cudaFlag=False)
         self.reward = 0
         self.action = None
         self.speed = 9000

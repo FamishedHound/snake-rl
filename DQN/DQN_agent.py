@@ -19,17 +19,23 @@ from GAN.reward_model import reward_model
 
 class DQN_agent():
     def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model, path, epsilon_speed):
+                 load_model, path, epsilon_speed, cudaFlag=True):
 
         self.save_model = save_model
         self.load_model = load_model
         self.epsilon_speed = epsilon_speed
+        self.cudaFlag = cudaFlag
+        if self.cudaFlag:
+            self.Q_network = DQN(action_number, frames).cuda()
+            self.target_network = DQN(action_number, frames).cuda()
+        else:
+            self.Q_network = DQN(action_number, frames)
+            self.target_network = DQN(action_number, frames)
 
-        self.Q_network = DQN(action_number, frames).cuda()
         if self.load_model:
-            self.Q_network.load_state_dict(torch.load(path))
+            self.Q_network.load_state_dict(torch.load(path, map_location=('cpu')))
 
-        self.target_network = DQN(action_number, frames).cuda()
+        
         self.optimizer_Q_network = torch.optim.Adam(self.Q_network.parameters(), lr=learning_rate)
 
         self.discount_factor = discount_factor
@@ -50,8 +56,10 @@ class DQN_agent():
         self.country = 0
         self.gan = UNet(5, 1)
         self.reward_predictor = reward_model(5)
-        self.gan = self.gan.cuda()
-        self.reward_predictor = self.reward_predictor.cuda()
+        if self.cudaFlag:
+            self.gan = self.gan.cuda()
+            self.reward_predictor = self.reward_predictor.cuda()
+
         #self.gan.load_state_dict(torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\FULLY_OPERATIONAL_GAN3.pt"))
         #self.reward_predictor.load_state_dict(
        #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
@@ -62,43 +70,71 @@ class DQN_agent():
 
             with torch.enable_grad():
                 batch = self.memory.sample(self.batch_size)
-                states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
-                    (self.batch_size, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((self.batch_size),
-                                                                                                    requires_grad=True).cuda(), torch.empty(
-                    (self.batch_size), requires_grad=True).cuda(), torch.empty((self.batch_size, self.frames, 84, 84),
-                                                                               requires_grad=True).cuda(), torch.empty(
-                    (self.batch_size),
-                    requires_grad=True).cuda(), torch.empty(
-                    (self.batch_size), requires_grad=True).cuda()
-                for i in range(len(batch)):
-                    states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
-                                                                                                                 0], \
-                                                                                                             batch[i][
-                                                                                                                 1], \
-                                                                                                             batch[i][
-                                                                                                                 2], \
-                                                                                                             batch[i][
-                                                                                                                 3], \
-                                                                                                             batch[i][
-                                                                                                                 4], \
-                                                                                                             batch[i][5]
+                if self.cudaFlag:
+                    states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
+                        (self.batch_size, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((self.batch_size),
+                                                                                                        requires_grad=True).cuda(), torch.empty(
+                        (self.batch_size), requires_grad=True).cuda(), torch.empty((self.batch_size, self.frames, 84, 84),
+                                                                                requires_grad=True).cuda(), torch.empty(
+                        (self.batch_size), requires_grad=True).cuda(), torch.empty((self.batch_size), requires_grad=True).cuda()
+                else:
+                   
+                    states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
+                    (self.batch_size, self.frames, 84, 84), requires_grad=True), torch.empty((self.batch_size),
+                                                                                                    requires_grad=True), torch.empty(
+                    (self.batch_size), requires_grad=True), torch.empty((self.batch_size, self.frames, 84, 84),
+                                                                               requires_grad=True), torch.empty(
+                    (self.batch_size), requires_grad=True), torch.empty((self.batch_size), requires_grad=True)
 
-                future_states = future_states.cuda()
-
+                if self.cudaFlag:
+                    for i in range(len(batch)):
+                        states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
+                                                                                                                0], \
+                                                                                                            batch[i][
+                                                                                                                1], \
+                                                                                                            batch[i][
+                                                                                                                2], \
+                                                                                                            batch[i][
+                                                                                                                3], \
+                                                                                                            batch[i][
+                                                                                                                4], \
+                                                                                                            batch[i][5]
+                    
+                else:
+                    with torch.no_grad():
+                        for i in range(len(batch)):
+                            states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
+                                                                                                                    0], \
+                                                                                                                batch[i][
+                                                                                                                    1], \
+                                                                                                                batch[i][
+                                                                                                                    2], \
+                                                                                                                batch[i][
+                                                                                                                    3], \
+                                                                                                                batch[i][
+                                                                                                                    4], \
+                                                                                                                batch[i][5]
+                    
+                if self.cudaFlag:
+                    future_states = future_states.cuda()
+                
                 self.Q_network.train()
-
                 self.optimizer_Q_network.zero_grad()
                 response = self.Q_network(states)
-
                 loss_input = response
                 loss_target = loss_input.clone()
 
                 new_values = rewards + torch.mul(self.target_network(future_states).max(dim=1).values[
                                                      0] * (1 - terminals) + terminals * terminals_reward,
                                                  self.discount_factor)
-                new_values = new_values.cuda()
-
-                idx = torch.cat((torch.arange(self.batch_size).float().cuda(), actions)).cuda()
+                
+                if self.cudaFlag:
+                    new_values = new_values.cuda()
+                    idx = torch.cat((torch.arange(self.batch_size).float().cuda(), actions)).cuda()
+                else:
+                    idx = torch.cat((torch.arange(self.batch_size).float(), actions))
+                
+                
                 idx = idx.reshape(2, self.batch_size).cpu().long().numpy()
                 loss_target[idx] = new_values
 
@@ -110,9 +146,11 @@ class DQN_agent():
                 #                 #     #plt.show()
                 #                 #     print()
 
+                
                 self.plot.append(loss.item())
                 loss.backward()
                 self.optimizer_Q_network.step()
+                
 
     def update_target_network(self):
         # copy current_network to target network
@@ -123,7 +161,10 @@ class DQN_agent():
 
         with torch.no_grad():
             state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
-            state = state.float().cuda()
+            if self.cudaFlag:
+                state = state.float().cuda()
+            else:
+                state = state.float()
             network_response = self.Q_network(state)
             values, indices = network_response.max(dim=1)
 
@@ -226,11 +267,19 @@ class DQN_agent():
                 action_input) \
                                 .unsqueeze(1) \
                                 .unsqueeze(2)
-            state_action = torch.cat(
-                [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
-            future_state = self.gan(state_action.unsqueeze(0).cuda())
-            now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
-            now_future = now_future.cuda()
+                                
+            if self.cudaFlag:
+                state_action = torch.cat(
+                    [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
+                future_state = self.gan(state_action.unsqueeze(0).cuda())
+                now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
+                now_future = now_future.cuda()
+            else:
+                state_action = torch.cat(
+                    [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0), action_output.float()], dim=0)
+                future_state = self.gan(state_action.unsqueeze(0))
+                now_future = torch.cat([state.squeeze().unsqueeze(0), future_state.squeeze().unsqueeze(0)], 0)
+
             reward = self.reward_predictor(now_future.unsqueeze(0))
             reward = self.determine_reward(reward)
 
