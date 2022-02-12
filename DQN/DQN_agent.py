@@ -19,13 +19,13 @@ from GAN.reward_model import reward_model
 
 class DQN_agent():
     def __init__(self, action_number, frames, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model, path, epsilon_speed, cudaFlag=True):
+                 load_model, path, epsilon_speed, cuda_flag=True):
 
         self.save_model = save_model
         self.load_model = load_model
         self.epsilon_speed = epsilon_speed
-        self.cudaFlag = cudaFlag
-        if self.cudaFlag:
+        self.cuda_flag = cuda_flag
+        if self.cuda_flag:
             self.Q_network = DQN(action_number, frames).cuda()
             self.target_network = DQN(action_number, frames).cuda()
         else:
@@ -56,7 +56,7 @@ class DQN_agent():
         self.country = 0
         self.gan = UNet(5, 1)
         self.reward_predictor = reward_model(5)
-        if self.cudaFlag:
+        if self.cuda_flag:
             self.gan = self.gan.cuda()
             self.reward_predictor = self.reward_predictor.cuda()
 
@@ -70,7 +70,7 @@ class DQN_agent():
 
             with torch.enable_grad():
                 batch = self.memory.sample(self.batch_size)
-                if self.cudaFlag:
+                if self.cuda_flag:
                     states, actions, rewards, future_states, terminals, terminals_reward = torch.empty(
                         (self.batch_size, self.frames, 84, 84), requires_grad=True).cuda(), torch.empty((self.batch_size),
                                                                                                         requires_grad=True).cuda(), torch.empty(
@@ -86,7 +86,7 @@ class DQN_agent():
                                                                                requires_grad=True), torch.empty(
                     (self.batch_size), requires_grad=True), torch.empty((self.batch_size), requires_grad=True)
 
-                if self.cudaFlag:
+                if self.cuda_flag:
                     for i in range(len(batch)):
                         states[i], actions[i], rewards[i], future_states[i], terminals[i], terminals_reward[i] = batch[i][
                                                                                                                 0], \
@@ -115,7 +115,7 @@ class DQN_agent():
                                                                                                                     4], \
                                                                                                                 batch[i][5]
                     
-                if self.cudaFlag:
+                if self.cuda_flag:
                     future_states = future_states.cuda()
                 
                 self.Q_network.train()
@@ -128,7 +128,7 @@ class DQN_agent():
                                                      0] * (1 - terminals) + terminals * terminals_reward,
                                                  self.discount_factor)
                 
-                if self.cudaFlag:
+                if self.cuda_flag:
                     new_values = new_values.cuda()
                     idx = torch.cat((torch.arange(self.batch_size).float().cuda(), actions)).cuda()
                 else:
@@ -161,7 +161,7 @@ class DQN_agent():
 
         with torch.no_grad():
             state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
-            if self.cudaFlag:
+            if self.cuda_flag:
                 state = state.float().cuda()
             else:
                 state = state.float()
@@ -268,7 +268,7 @@ class DQN_agent():
                                 .unsqueeze(1) \
                                 .unsqueeze(2)
                                 
-            if self.cudaFlag:
+            if self.cuda_flag:
                 state_action = torch.cat(
                     [torch.from_numpy(state.cpu().numpy().squeeze()).unsqueeze(0).cuda(), action_output.float().cuda()], dim=0)
                 future_state = self.gan(state_action.unsqueeze(0).cuda())

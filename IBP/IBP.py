@@ -23,12 +23,15 @@ from pygame.locals import (
 # f"new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
 
 class IBP(object):
-    def __init__(self, dqn_agent):
+    def __init__(self, dqn_agent, proj_path, cuda_flag=True):
         self.manager = ManagerModel()
-        gan_path = "C:\\Users\\killi\\Repos\\snake-rl\\"
+        gan_path = proj_path
         gan_path += f"new_models\\GAN13_3_15_new.pt"
-        self.controller = dqn_agent                         #LOAD IN
-        self.GAN = torch.load(gan_path, map_location=torch.device('cpu'))                     #BOTH MODELS
+        self.controller = dqn_agent             #LOAD IN BOTH MODELS
+        if cuda_flag:
+            self.GAN = torch.load(gan_path, map_location=torch.device('cpu'))
+        else:
+            self.GAN = torch.load(gan_path)
         # self.reward_predictor = ### Our best rew.prededitor
         # this is likely to just be our controller but excluding everything but 
         # the reward - may not need it?

@@ -30,12 +30,10 @@ from pygame.locals import (
 snake_starting_pos = (1, 3)
 # ( bool (do we want to load) ,  filename )
 load_tables_from_file = (False, "9x9model")
-
 range_of_apple_spawn = (1, 2)
 
 BOARD_WIDTH = 5
 BOARD_HEIGHT = 5
-
 
 class Board():
     def __init__(self, height, width, dqn_agent):
@@ -46,11 +44,12 @@ class Board():
         self.height = height
         self.width = width
         self.screen = pygame.display
-        self.screen.set_mode([self.block_size * self.height, self.block_size * self.width])
+        self.screen.set_mode([self.block_size * self.height,
+                             self.block_size * self.width])
         self.snake = Snake(self.block_size, self.screen, snake_starting_pos)
-
         self.running = True
-        self.apple = apple(height, width, self.block_size, self.screen, range_of_apple_spawn, self.snake)
+        self.apple = apple(height, width, self.block_size, self.screen,
+                            range_of_apple_spawn, self.snake)
         self.new_pos_x = 0
         self.new_pos_y = 0
         self.index = 96662 ### Why 77000 and not 0?
@@ -58,7 +57,10 @@ class Board():
         self.collision = collision(self.apple, self.snake)
         self.apple.spawn_apple()
         self.tick = 0
-        self.game_manager = games_manager((self.apple.x, self.apple.y), snake_starting_pos, self.height, self.width,
+        self.game_manager = games_manager((self.apple.x, self.apple.y), 
+                                          snake_starting_pos,
+                                          self.height,
+                                          self.width,
                                           self.snake, load_tables_from_file)
         self.current_game = self.game_manager.switch_state_table(self.apple.apple_position, self.snake.snake_head,
                                                                  snake_starting_pos)
@@ -66,11 +68,7 @@ class Board():
         self.games_count = 0
         self.longest_streak = 0
 
-        self.dqn_agent = DQN_agent(action_number=4, frames=1, learning_rate=0.0001, discount_factor=0.99, batch_size=8,
-                                   epsilon=1, save_model=False, load_model=True,
-                                   path="C:\\Users\\killi\\Repos\\snake-rl\\DQN_trained_model"
-                                        +"\\10x10_model_with_tail.pt",
-                                   epsilon_speed=1e-4, cudaFlag=False)
+        self.dqn_agent = dqn_agent
         self.reward = 0
         self.action = None
         self.speed = 9000
