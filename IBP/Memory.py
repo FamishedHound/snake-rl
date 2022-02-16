@@ -12,6 +12,6 @@ class LSTMModel(nn.Module):
                        torch.zeros(1,1,self.hidden_size))
 
     def forward(self, seq):
-        lstm_out, self.hidden = self.lstm(seq.view(len(seq),1,-1), self.hidden)
-        pred = self.linear(lstm_out.view(len(seq),-1))
+        c, self.hidden = self.lstm(seq.view(len(seq),1,-1), self.hidden)
+        pred = self.linear(c.view(len(seq),-1))
         return pred[-1]

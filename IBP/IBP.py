@@ -64,6 +64,38 @@ class IBP(object):
             # Same goes for reward - both on previous lines are updated
             # by environment methods
             new_state, reward, done = env.run_step(action, apple_crawl=False)
+
+            # Push "plan context" through LSTM
+            # LSTM takes:
+
+            # (After Omagining)
+            # manager output (route) p_j_k
+            # current (real_state) s_j
+            # current (imagined_state, given route - can be s_j again) s_j_pjk
+            # action decided (action) a_j,k
+            # state imagined (next_imagined_state) s_j_k+1
+            # resultant reward (reward) r_j_k
+            # j
+            # k
+            # c_i-1
+            #
+            # OR
+            #
+            # (After Acting)
+            # manager output (route) p_j_k
+            # current (real_state) s_j
+            # current (imagined_state "base", just s_j again) s_j_0
+            # action decided (action) a_j
+            # resultant world state (next_state) s_j+1
+            # resultant reward (reward) r_j
+            # j
+            # k
+            # c_i-1 .
+
+            
+
+            context = self.memory.forward()
+
             if reward == 10:
                 score += 1            
 
