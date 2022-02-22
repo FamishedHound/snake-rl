@@ -15,3 +15,5 @@ video_prediction/
 __pycache__
 DQN/__pycache__
 GAN/__pycache__
+
+.vscode/

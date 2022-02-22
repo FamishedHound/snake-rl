@@ -14,13 +14,13 @@ if __name__ == "__main__":
                               epsilon=1,
                               save_model=False,
                               load_model=True,
-                              path=PC_PATH
+                              path=LAPTOP_PATH
                               +"DQN_trained_model\\10x10_model_with_tail.pt",
                               epsilon_speed=1e-4,
-                              cudaFlag=True)
+                              cuda_flag=False)
         print("created dqn agent fine")
         board = Board(BOARD_HEIGHT, BOARD_WIDTH, dqn_agent=dqn_agent)
-        ibp = IBP(dqn_agent=dqn_agent)
+        ibp = IBP(dqn_agent=dqn_agent, proj_path=LAPTOP_PATH, cuda_flag=False)
         num_eps = 1000
         scores = []
         for ep in range(num_eps):            

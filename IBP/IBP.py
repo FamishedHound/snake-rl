@@ -23,12 +23,12 @@ from pygame.locals import (
 # f"new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
 
 class IBP(object):
-    def __init__(self, dqn_agent, proj_path, cuda_flag=True):
+    def __init__(self, dqn_agent, proj_path, state_size, cuda_flag=True):
         self.manager = ManagerModel()
         gan_path = proj_path
         gan_path += f"new_models\\GAN13_3_15_new.pt"
         self.controller = dqn_agent             #LOAD IN BOTH MODELS
-        if cuda_flag:
+        if not cuda_flag:
             self.GAN = torch.load(gan_path, map_location=torch.device('cpu'))
         else:
             self.GAN = torch.load(gan_path)
@@ -55,20 +55,22 @@ class IBP(object):
         num_imagined = 0
         score = 0
         while True:
-            
-            reward = env.collision.return_reward(env.height, env.width)
-            state = env.get_state()
-            action = self.select_action(state=state, reward=reward)
+            route = 0 #self.manager.get_route()
+            real_reward = env.collision.return_reward(env.height, env.width)
+            real_state = env.get_state()
+
+            action = self.select_action(state=real_state, reward=real_reward)
             # Remember, run_step automatically updates internal state of 
             # environment, local state need not be updated with new_state
             # Same goes for reward - both on previous lines are updated
             # by environment methods
-            new_state, reward, done = env.run_step(action, apple_crawl=False)
+            new_state, real_reward, done = env.run_step(action,
+                                                        apple_crawl=False)
 
             # Push "plan context" through LSTM
             # LSTM takes:
 
-            # (After Omagining)
+            # (After Imagining)
             # manager output (route) p_j_k
             # current (real_state) s_j
             # current (imagined_state, given route - can be s_j again) s_j_pjk
@@ -94,9 +96,17 @@ class IBP(object):
 
             
 
-            context = self.memory.forward()
+            context = self.memory.forward(route=route, 
+                                          real_state=real_state, 
+                                          imagined_state=real_state,
+                                          action=action,
+                                          next_state=new_state,
+                                          reward=real_reward,
+                                          j=j,
+                                          k=k,
+                                          context=context)
 
-            if reward == 10:
+            if real_reward == 10:
                 score += 1            
 
             if done:
