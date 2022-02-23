@@ -94,8 +94,6 @@ class IBP(object):
             # k
             # c_i-1 .
 
-            
-
             context = self.memory.forward(route=route, 
                                           real_state=real_state, 
                                           imagined_state=real_state,
