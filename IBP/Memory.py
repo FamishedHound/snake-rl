@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import util
 
 class LSTMModel(nn.Module):
     def __init__(self, input_size, c_size, hidden_size=100, output_size=50):
@@ -22,11 +23,10 @@ class LSTMModel(nn.Module):
         seq.append(reward)
         seq.append(j)
         seq.append(k)
-        seq_tensor = tensor_from(seq)
+        seq_tensor = util.tensor_from(seq)
         #seq, self.hidden = self.lstm(seq_tensor.view(len(seq_tensor),1,-1), self.hidden)
         #out = self.linear(c.view(len(seq),-1))
-        c, self.cell_state = self.lstm_cell(input_tensor.unsqueeze(0), 
+        c, self.cell_state = self.lstm_cell(seq_tensor.unsqueeze(0), 
                                             (prev_c.unsqueeze(0),
                                             self.cell_state))
-        
         return c.squeeze() # Return whole sequence (c_i)
