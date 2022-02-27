@@ -1,5 +1,8 @@
 import sys
 from matplotlib import pyplot as plt
+from matplotlib.style import context
+
+import util
 sys.path.append("..")
 from DQN.DQN_agent import DQN_agent
 import torch.nn as nn
@@ -25,7 +28,8 @@ from pygame.locals import (
 class IBP(object):
     def __init__(self, dqn_agent, proj_path, environment, cuda_flag=True):
         self.context = torch.zeros(100) #CONTEXT SEQUENCE IS OF LENGTH 100 :D
-        print(self.context.shape[0])
+        if cuda_flag:
+            self.context= self.context.cuda()
         self.env = environment
 
         #Fresh Manager
@@ -58,8 +62,6 @@ class IBP(object):
         # this is likely to just be our controller but excluding everything but 
         # the reward - may not need it?
 
-        
-
 
     def select_action(self, state, context, reward):
         return self.controller.make_action(state, context, reward,
@@ -73,20 +75,17 @@ class IBP(object):
         plt.close()
 
     def run(self, env):
-        history = []
         num_real = 0
         num_imagined = 0
         score = 0
-        context = self.context
         while True:
             route = 0 #self.manager.get_route()
             real_reward = env.collision.return_reward(env.height, env.width)
             real_state = env.get_state()
 
             action = self.select_action(state=real_state,
-                                        context=context, 
+                                        context=self.context, 
                                         reward=real_reward)
-            print("HERE1")
             # Remember, run_step automatically updates internal state of 
             # environment, local state need not be updated with new_state
             # Same goes for reward - both on previous lines are updated
@@ -95,54 +94,57 @@ class IBP(object):
                                                         apple_crawl=False)
 
 
-            # Push "plan context" through LSTM
-            # LSTM takes:
+            
+            '''
+                # Push "plan context" through LSTM
+                # LSTM takes:
 
-            # (After Imagining)
-            # manager output (route) p_j_k
-            # current (real_state) s_j
-            # current (imagined_state, given route - can be s_j again) s_j_pjk
-            # action decided (action) a_j,k
-            # state imagined (next_imagined_state) s_j_k+1
-            # resultant reward (reward) r_j_k
-            # j
-            # k
-            # c_i-1
-            #
-            # OR
-            #
-            # (After Acting)
-            # manager output (route) p_j_k
-            # current (real_state) s_j
-            # current (imagined_state "base", just s_j again) s_j_0
-            # action decided (action) a_j
-            # resultant world state (next_state) s_j+1
-            # resultant reward (reward) r_j
-            # j
-            # k
-            # c_i-1 .
-            print("HERE")
+                # (After Imagining)
+                # manager output (route) p_j_k
+                # current (real_state) s_j
+                # current (imagined_state, given route - can be s_j again) s_j_pjk
+                # action decided (action) a_j,k
+                # state imagined (next_imagined_state) s_j_k+1
+                # resultant reward (reward) r_j_k
+                # j
+                # k
+                # c_i-1
+                #
+                # OR
+                #
+                # (After Acting)
+                # manager output (route) p_j_k
+                # current (real_state) s_j
+                # current (imagined_state "base", just s_j again) s_j_0
+                # action decided (action) a_j
+                # resultant world state (next_state) s_j+1
+                # resultant reward (reward) r_j
+                # j
+                # k
+                # c_i-1 .
+            '''
             seq = []
-            seq.append(route)
-            seq.append(real_state)
+            seq.append(route)  #1
+            seq.append(real_state) #84,84 
             seq.append(real_state)
             seq.append(action)
             seq.append(new_state)
             seq.append(real_reward)
             seq.append(0)
             seq.append(0)
+            seq = util.tensor_from(seq)
+            print("S")
+            print(seq.size)
 
-            print(len(seq))
-
-            context = self.memory.forward(route=route, 
-                                          actual_state=real_state, 
-                                          last_imagined_state=real_state,
-                                          action=action,
-                                          new_state=new_state,
-                                          reward=real_reward,
-                                          j=0,
-                                          k=0,
-                                          prev_c=context)
+            self.context = self.memory(route=route, 
+                                  actual_state=real_state, 
+                                  last_imagined_state=real_state,
+                                  action=action,
+                                  new_state=new_state,
+                                  reward=real_reward,
+                                  j=0,
+                                  k=0,
+                                  prev_c=self.context)
 
             if real_reward == 10:
                 score += 1            

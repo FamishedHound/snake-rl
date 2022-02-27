@@ -52,26 +52,23 @@ class ControllerAgent():
         self.network.eval()
         with torch.no_grad():
             state = torch.from_numpy(state.copy()).unsqueeze(0).unsqueeze(0)
-            context = torch.from_numpy(context)
+            #context is already Tensor
             if self.cuda_flag:
                 state = state.float().cuda()
             else:
                 state = state.float()
 
-            network_output = self.network(state)
-            values, indices = network_output.max(dim=1)
-
+            network_output = self.network(state, context)
+            print(network_output)
+            values, indices = network_output.max(dim=0)
             randy_random = random.uniform(0, 1)
-
             if randy_random > self.epsilon:
-
                  #ASK LUKASZ ABOUT THIS
                 if self.previous_action != None:
                     forbidden_move = self.forbidden_action()
                     network_output[0][forbidden_move] = -99
                     possible_actions = network_output[0]
                     values, indices = possible_actions.max(dim=0)
-
                     action = indices.item()
                 else:
                     action = indices.item()
@@ -119,8 +116,6 @@ class ControllerModel(nn.Module):
         self.conv1 = nn.Conv2d(1, 32, 8, stride=4) #out=20
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2) #out=9
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1) #out=7
-
-        
         self.linear1 = nn.Linear(7 * 7 * 64 + context_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, output_size)
         
@@ -129,10 +124,10 @@ class ControllerModel(nn.Module):
         X = F.relu(self.conv2(X))
         X = F.relu(self.conv3(X))
         X = X.view(X.size(0), 7 * 7 * 64)
-        print("trouble")
-        
-        X = F.relu(self.linear1(torch.cat(X, context)))
-        print("no trouble, amazingly")
-        X = self.linear2(X)
+        X = F.relu(self.linear1(torch.cat((X.squeeze(), context), 0)))
+        X = F.relu(self.linear2(X))
         return X
+
+        
+        
 

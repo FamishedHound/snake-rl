@@ -23,4 +23,6 @@ def tensor_from(*args):
 
         tensor_parts.append(part)
 
+    for part in tensor_parts:
+        print(part.shape)
     return torch.cat(tensor_parts)

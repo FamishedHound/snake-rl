@@ -31,10 +31,7 @@ if __name__ == "__main__":
 
         num_eps = 1000
         scores = []
-
-        print(board.get_state())
-        print(board.get_state().shape)
-        
+       
         for ep in range(num_eps):            
             
             score = ibp.run(board)
