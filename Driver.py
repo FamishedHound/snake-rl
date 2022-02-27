@@ -5,6 +5,8 @@ from DQN.DQN_agent import DQN_agent
 PC_PATH = "C:\\Users\\killi\Documents\\Repositories\\snake-rl\\"
 LAPTOP_PATH = "C:\\Users\\killi\\Repos\\snake-rl\\"
 
+CUDA_FLAG = True
+
 if __name__ == "__main__":
     try:      
         dqn_agent = DQN_agent(action_number=4,
@@ -14,18 +16,18 @@ if __name__ == "__main__":
                               batch_size=8,
                               epsilon=1,
                               save_model=False,
-                              load_model=True,
-                              path=LAPTOP_PATH
+                              load_model=False,
+                              path=PC_PATH
                               +"DQN_trained_model\\10x10_model_with_tail.pt",
                               epsilon_speed=1e-4,
-                              cuda_flag=False)
+                              cuda_flag=CUDA_FLAG)
 
         board = Board(BOARD_HEIGHT, BOARD_WIDTH, dqn_agent=dqn_agent)
 
         ibp = IBP(dqn_agent=dqn_agent,
                   environment=board, 
-                  proj_path=LAPTOP_PATH, 
-                  cuda_flag=False)
+                  proj_path=PC_PATH, 
+                  cuda_flag=CUDA_FLAG)
 
         num_eps = 1000
         scores = []
@@ -33,7 +35,6 @@ if __name__ == "__main__":
         print(board.get_state())
         print(board.get_state().shape)
         
-        pass
         for ep in range(num_eps):            
             
             score = ibp.run(board)

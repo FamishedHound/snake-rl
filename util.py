@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+# Pulled straight from the IBP-Pytorch repo - NOT my work
 def tensor_from(*args):
     if len(args) == 1 and isinstance(args[0], list):
         args = args[0]

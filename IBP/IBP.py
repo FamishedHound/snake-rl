@@ -5,7 +5,7 @@ from DQN.DQN_agent import DQN_agent
 import torch.nn as nn
 import torch
 from IBP.Manager import ManagerModel
-from IBP.Controller import ControllerModel
+from IBP.Controller import ControllerAgent, ControllerModel
 from IBP.Memory import LSTMModel
 from pygame.locals import (
     K_UP,
@@ -25,12 +25,31 @@ from pygame.locals import (
 class IBP(object):
     def __init__(self, dqn_agent, proj_path, environment, cuda_flag=True):
         self.context = torch.zeros(100) #CONTEXT SEQUENCE IS OF LENGTH 100 :D
+        print(self.context.shape[0])
+        self.env = environment
 
-
-        self.manager = ManagerModel()
+        #Fresh Manager
+        self.manager = ManagerModel(context_size=self.context.shape[0])
+        #Fresh Controller Agent
+        self.controller = ControllerAgent(context_size=self.context.shape[0],
+                                          action_number=4,
+                                          frames=1, 
+                                          learning_rate=0.0001,
+                                          discount_factor=0.99, 
+                                          batch_size=8,
+                                          epsilon=1,
+                                          save_model=False,
+                                          load_model=True,
+                                          path=proj_path+"DQN_trained_model\\1"+
+                                          "0x10_model_with_tail.pt",
+                                          epsilon_speed=1e-4,
+                                          cuda_flag=cuda_flag)
+        #Fresh Memory
+        self.memory = LSTMModel()
+        
+        #GAN Stuff for much later
         gan_path = proj_path
         gan_path += f"new_models\\GAN13_3_15_new.pt"
-        self.controller = dqn_agent             #LOAD IN BOTH MODELS
         if not cuda_flag:
             self.GAN = torch.load(gan_path, map_location=torch.device('cpu'))
         else:
@@ -38,12 +57,13 @@ class IBP(object):
         # self.reward_predictor = ### Our best rew.prededitor
         # this is likely to just be our controller but excluding everything but 
         # the reward - may not need it?
-        self.memory = LSTMModel()
+
+        
 
 
-    def select_action(self, state, reward):
-        return self.controller.make_action(state, reward,
-                        True if reward == -1 or reward == 10 else False)
+    def select_action(self, state, context, reward):
+        return self.controller.make_action(state, context, reward,
+                                True if reward == -1 or reward == 10 else False)
 
     def plot_results(self, scores):
         plt.figure(figsize=(12,5))
@@ -57,13 +77,16 @@ class IBP(object):
         num_real = 0
         num_imagined = 0
         score = 0
-        context = None
+        context = self.context
         while True:
             route = 0 #self.manager.get_route()
             real_reward = env.collision.return_reward(env.height, env.width)
             real_state = env.get_state()
 
-            action = self.select_action(state=real_state, reward=real_reward)
+            action = self.select_action(state=real_state,
+                                        context=context, 
+                                        reward=real_reward)
+            print("HERE1")
             # Remember, run_step automatically updates internal state of 
             # environment, local state need not be updated with new_state
             # Same goes for reward - both on previous lines are updated
@@ -98,16 +121,28 @@ class IBP(object):
             # j
             # k
             # c_i-1 .
+            print("HERE")
+            seq = []
+            seq.append(route)
+            seq.append(real_state)
+            seq.append(real_state)
+            seq.append(action)
+            seq.append(new_state)
+            seq.append(real_reward)
+            seq.append(0)
+            seq.append(0)
+
+            print(len(seq))
 
             context = self.memory.forward(route=route, 
-                                          real_state=real_state, 
-                                          imagined_state=real_state,
+                                          actual_state=real_state, 
+                                          last_imagined_state=real_state,
                                           action=action,
-                                          next_state=new_state,
+                                          new_state=new_state,
                                           reward=real_reward,
-                                          j=1,
-                                          k=1,
-                                          context=context)
+                                          j=0,
+                                          k=0,
+                                          prev_c=context)
 
             if real_reward == 10:
                 score += 1            
