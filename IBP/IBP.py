@@ -23,7 +23,10 @@ from pygame.locals import (
 # f"new_models\\GAN13_{generator_amplifier}_{discriminator_deamplifier}_new.pt")
 
 class IBP(object):
-    def __init__(self, dqn_agent, proj_path, state_size, cuda_flag=True):
+    def __init__(self, dqn_agent, proj_path, environment, cuda_flag=True):
+        self.context = torch.zeros(100) #CONTEXT SEQUENCE IS OF LENGTH 100 :D
+
+
         self.manager = ManagerModel()
         gan_path = proj_path
         gan_path += f"new_models\\GAN13_3_15_new.pt"
@@ -54,6 +57,7 @@ class IBP(object):
         num_real = 0
         num_imagined = 0
         score = 0
+        context = None
         while True:
             route = 0 #self.manager.get_route()
             real_reward = env.collision.return_reward(env.height, env.width)
@@ -66,6 +70,7 @@ class IBP(object):
             # by environment methods
             new_state, real_reward, done = env.run_step(action,
                                                         apple_crawl=False)
+
 
             # Push "plan context" through LSTM
             # LSTM takes:
@@ -100,8 +105,8 @@ class IBP(object):
                                           action=action,
                                           next_state=new_state,
                                           reward=real_reward,
-                                          j=j,
-                                          k=k,
+                                          j=1,
+                                          k=1,
                                           context=context)
 
             if real_reward == 10:

@@ -54,6 +54,8 @@ class DQN_agent():
         self.x = 0
         self.plot = []
         self.country = 0
+
+        # unused GAN stuff
         self.gan = UNet(5, 1)
         self.reward_predictor = reward_model(5)
         if self.cuda_flag:
@@ -65,6 +67,7 @@ class DQN_agent():
        #     torch.load("C:\\Users\\LukePC\\PycharmProjects\\snake-rl\\GAN_models\\reward_predictor.pt"))
         self.gan.eval()
         self.reward_predictor.eval()
+        
     def update_Q_network(self):
         if len(self.memory.memory) > self.batch_size + 1:
 
