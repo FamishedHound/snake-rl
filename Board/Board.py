@@ -175,7 +175,7 @@ class Board():
     def lose_win_scenario(self, reward):
         if reward == -1 or reward == 10:
             if reward == -1:
-                print("Apple score {}".format(self.longest_streak))
+                #print("Apple score {}".format(self.longest_streak))
                 self.longest_streak = 0
                 self.snake.reset_snake()
             if reward == 10:

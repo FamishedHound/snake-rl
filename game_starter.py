@@ -31,8 +31,8 @@ load_tables_from_file = (False, "9x9model")
 
 range_of_apple_spawn = (1, 2)
 
-BOARD_WIDTH = 4
-BOARD_HEIGHT = 4
+BOARD_WIDTH = 5
+BOARD_HEIGHT = 5
 
 
 class Board():

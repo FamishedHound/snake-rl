@@ -8,29 +8,36 @@ sys.path.append("..")
 from DQN.DQN_agent import replay_memory
 
 class ControllerAgent():
-    def __init__(self, action_number, frames, context_size, learning_rate, discount_factor, batch_size, epsilon, save_model,
-                 load_model, path, epsilon_speed, cuda_flag=True):
+    def __init__(self, action_number, frames, context_size, learning_rate, 
+                       discount_factor, batch_size, epsilon, save_model,
+                       load_model, path, epsilon_speed, cuda_flag=True):
+
         self.cuda_flag = cuda_flag
         self.save_model = save_model
         self.load_model = load_model
         self.epsilon_speed = epsilon_speed
-
         self.context_size = context_size
-
-        self.network = ControllerModel(context_size=context_size, output_size=action_number)
-        self.target_network = ControllerModel(context_size=context_size, output_size=action_number)
+        self.network = ControllerModel(context_size=context_size, 
+                                       output_size=action_number)
+        self.target_network = ControllerModel(context_size=context_size, 
+                                              output_size=action_number)
 
         if self.cuda_flag:
-            self.network = ControllerModel(context_size=context_size, output_size=action_number).cuda()
-            self.target_network = ControllerModel(context_size=context_size, output_size=action_number).cuda()
+            self.network = ControllerModel(context_size=context_size, 
+                                           output_size=action_number).cuda()
+            self.target_network = ControllerModel(context_size=context_size,
+                                            output_size=action_number).cuda()
         else:
-            self.network = ControllerModel(context_size=context_size, output_size=action_number)
-            self.target_network = ControllerModel(context_size=context_size, output_size=action_number)
+            self.network = ControllerModel(context_size=context_size,
+                                           output_size=action_number)
+            self.target_network = ControllerModel(context_size=context_size,
+                                                  output_size=action_number)
 
         #if self.load_model:
-        #    self.network.load_state_dict(torch.load(path, map_location=('cpu')))
+        #  self.network.load_state_dict(torch.load(path, map_location=('cpu')))
 
-        self.optimizer_network = torch.optim.Adam(self.network.parameters(), lr=learning_rate)
+        self.optimizer_network = torch.optim.Adam(self.network.parameters(), 
+                                                  lr=learning_rate)
 
         self.discount_factor = discount_factor
         #self.target_network.load_state_dict(self.network.state_dict())
@@ -44,10 +51,6 @@ class ControllerAgent():
         self.flag = False
         self.previous_reward = None
 
-    def update_network():
-        #TODO
-        pass
-        
     def make_action(self, state, context, reward, terminal):
         self.network.eval()
         with torch.no_grad():
@@ -59,7 +62,6 @@ class ControllerAgent():
                 state = state.float()
 
             network_output = self.network(state, context)
-            print(network_output)
             values, indices = network_output.max(dim=0)
             randy_random = random.uniform(0, 1)
             if randy_random > self.epsilon:
@@ -80,8 +82,8 @@ class ControllerAgent():
                     actions.remove(forbidden_move)
                 action = random.choice(actions)
 
-            if self.flag:
-                self.update_network(reward, terminal, state, context)
+            #if self.flag:
+                #self.update_network(reward, terminal, state, context)
             self.flag = True
             self.previous_action = action
             self.previous_state = state.clone()
@@ -94,7 +96,6 @@ class ControllerAgent():
                     self.previous_reward = None
                 self.flag = False
             return action
-
 
     def forbidden_action(self):
         if self.previous_action == 0:
@@ -110,7 +111,8 @@ class ControllerAgent():
     
 
 class ControllerModel(nn.Module):
-    def __init__(self, context_size, state_size=84, hidden_size=512, output_size=1):
+    def __init__(self, context_size, state_size=84, hidden_size=512,
+                       output_size=1):
         super().__init__()
         # state_size = 84x84
         self.conv1 = nn.Conv2d(1, 32, 8, stride=4) #out=20

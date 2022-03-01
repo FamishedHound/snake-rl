@@ -1,0 +1,31 @@
+NOTING DOWN IBP ALGORITHM FOR EASY REFERENCE:
+
+    funciton a^M (x, x*)
+        h <- ()
+        n_real <- 0
+        n_imagined <- 0
+
+        x_real <- x
+        x_imagined <- x
+
+        while n_real < n_max_real_steps
+            r <- policy_m (x_real, x*, h_n)
+
+            if r == 0 OR n_imagined < n_max_imagined_steps
+                c <- policy_c (x_real, x*, h_n)
+                x_real <- World(x_real, c)
+                n_real += 1
+                n_imagined = 0
+                x_imagined <- x_real
+
+            else if r == 1 
+                c <- policy_c (x_real, x*, h_n)
+                x_imagined <- I(x_real, x*, h_n)
+                n_imagined += 1
+
+            else if r == 2
+                c <- policy_c (x_imagined, x*, h_n)
+                x_imagined <- I(x_imagined, c)
+                n_imagined += 1
+
+            h <- u(h, c, r, x_real, x_imagined, n_real, n_imagined) 
